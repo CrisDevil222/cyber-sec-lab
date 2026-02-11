@@ -69,6 +69,63 @@ class User(UserMixin, db.Model):
     score = db.Column(db.Integer, default=0) # Điểm CTF
     solved_challenges = db.Column(db.String(500), default="") # Lưu ID các bài đã giải
 
+from datetime import datetime
+
+# --- BẢNG LƯU TRỮ ĐÓNG GÓP Ý KIẾN ---
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+# --- ROUTE XỬ LÝ FORM GÓP Ý ---
+@app.route('/submit_feedback', methods=['POST'])
+def submit_feedback():
+    name = request.form.get('name')
+    content = request.form.get('content')
+    
+    if name and content:
+        new_fb = Feedback(name=name, content=content)
+        db.session.add(new_fb)
+        db.session.commit()
+        # Hiện thông báo cảm ơn
+        flash('Cảm ơn bạn đã đóng góp ý kiến! Quản trị viên sẽ xem xét.', 'success')
+        
+    # Quay lại trang trước đó
+    return redirect(request.referrer or url_for('index'))
+
+    # ... (Phần trên của hàm submit_feedback) ...
+    if name and content:
+        new_fb = Feedback(name=name, content=content)
+        db.session.add(new_fb)
+        db.session.commit()
+        # Hiện thông báo cảm ơn
+        flash('Cảm ơn bạn đã đóng góp ý kiến! Quản trị viên sẽ xem xét.', 'success')
+        
+    # Quay lại trang trước đó
+    return redirect(request.referrer or url_for('index'))
+
+# ==========================================================
+# 👇 BẠN DÁN ĐOẠN CODE ADMIN VÀO NGAY KHOẢNG TRỐNG NÀY 👇
+# ==========================================================
+
+# --- TRANG ADMIN XEM GÓP Ý ---
+@app.route('/admin/feedbacks')
+# Bạn có thể thêm @login_required vào đây nếu muốn bảo mật
+def view_feedbacks():
+    # Lấy toàn bộ ý kiến từ mới nhất đến cũ nhất
+    all_feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
+    
+    # Render giao diện HTML đơn giản ngay trong Python để khỏi cần tạo file mới
+    html = "<h2>Danh sách ý kiến đóng góp:</h2><ul>"
+    for fb in all_feedbacks:
+        time_str = fb.timestamp.strftime('%Y-%m-%d %H:%M')
+        html += f"<li style='margin-bottom:15px'><b>{fb.name}</b> <i>({time_str})</i>: <br>{fb.content}</li>"
+    html += "</ul><a href='/'>Quay lại trang chủ</a>"
+    return html
+
+# ==========================================================
+# (Và bên dưới này tiếp tục là các route cũ của bạn...)
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))

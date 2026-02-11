@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}RSA Tool{% endblock %}
+
+{% block content %}
+<h2>RSA Encryption / Decryption</h2>
+<div class="tool-box">
+    <form method="POST">
+        <label>Message (Plaintext):</label>
+        <textarea name="message" style="width: 100%; background: #222; color: #0f0; border: 1px solid #0f0;" rows="4"></textarea>
+        
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" name="action" value="encrypt">Encrypt</button>
+            <button type="submit" name="action" value="decrypt">Decrypt</button>
+        </div>
+    </form>
+    
+    <div style="margin-top: 20px;">
+        <h3>Output:</h3>
+        <code style="white-space: pre-wrap;">{{ result if result else 'Waiting for input...' }}</code>
+    </div>
+</div>
+{% endblock %}

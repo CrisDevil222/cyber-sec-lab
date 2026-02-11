@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}AI Phishing Detector{% endblock %}
+{% block content %}
+<div class="tool-box" style="border-color: #00d2ff;">
+    <h2 style="color: #00d2ff;"><i class="fa-solid fa-robot"></i> AI Phishing Detector</h2>
+    <p>Sử dụng Machine Learning để phân tích và phát hiện đường dẫn lừa đảo.</p>
+
+    <form method="POST">
+        <label>Nhập đường link (URL) cần kiểm tra:</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" name="url" placeholder="Ví dụ: google.com hoặc nhan-qua-free.tk" required value="{{ url }}">
+            <button type="submit" style="background: #00d2ff; color: #000; font-weight: bold;">
+                <i class="fa-solid fa-brain"></i> Quét bằng AI
+            </button>
+        </div>
+    </form>
+
+    {% if result %}
+    <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px; text-align: center;">
+        <h3 style="margin-bottom: 10px;">Kết quả phân tích</h3>
+        
+        <div style="font-size: 2.5rem; font-weight: bold; margin: 15px 0; 
+            color: {% if 'SAFE' in result %}#00ff00{% else %}#ff4444{% endif %}; text-shadow: 0 0 10px currentColor;">
+            {{ result }}
+        </div>
+        
+        <p>Độ tin cậy của AI: <strong>{{ prob }}%</strong> khả năng là độc hại.</p>
+        
+        <div style="width: 100%; background: #333; height: 25px; border-radius: 15px; margin-top: 15px; overflow: hidden; border: 1px solid #555;">
+            <div style="width: {{ prob }}%; 
+                        background: linear-gradient(90deg, #ff9900, #ff0000); 
+                        height: 100%; 
+                        transition: width 1s ease-in-out;">
+            </div>
+        </div>
+        <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">(0% = Rất an toàn, 100% = Rất nguy hiểm)</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

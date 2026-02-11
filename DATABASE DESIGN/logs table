@@ -1,0 +1,9 @@
+CREATE TABLE logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT,
+    action TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    level TEXT,
+    timestamp TEXT
+);

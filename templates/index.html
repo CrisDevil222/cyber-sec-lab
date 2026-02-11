@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Trang chủ - CyberSec{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 50px;">
+    <h1>Chào mừng đến với CyberSec Hub</h1>
+    <p>Nền tảng thực hành và kiểm thử an ninh mạng toàn diện.</p>
+    <div style="margin-top: 30px;">
+        {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('login') }}"><button style="width: 200px; display: inline-block;">Đăng nhập</button></a>
+            <a href="{{ url_for('register') }}"><button style="width: 200px; display: inline-block; background: transparent; color: #00ff00;">Đăng ký</button></a>
+        {% else %}
+            <a href="{{ url_for('dashboard') }}"><button style="width: 200px; display: inline-block;">Vào Dashboard</button></a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

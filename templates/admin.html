@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: var(--accent-color); margin-bottom: 20px;">
+        <i class="fa-solid fa-user-secret"></i> Administration Panel
+    </h2>
+    
+    <h3>System Audit Logs</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 15px;">Nhật ký hoạt động của người dùng gần đây.</p>
+
+    <table style="width: 100%; border-collapse: collapse; color: var(--text-primary);">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--accent-color);">
+                <th style="text-align: left; padding: 10px;">Time</th>
+                <th style="text-align: left; padding: 10px;">User ID</th>
+                <th style="text-align: left; padding: 10px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <td style="padding: 10px;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td style="padding: 10px;">User #{{ log.user_id }}</td>
+                <td style="padding: 10px; color: var(--accent-color);">{{ log.action }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="padding: 20px; text-align: center;">Chưa có dữ liệu log.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

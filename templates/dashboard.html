@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Cyber Lab{% endblock %}
+
+{% block content %}
+<div class="tool-box" style="text-align: center;">
+    <h1 style="color: var(--primary-color); text-transform: uppercase; letter-spacing: 2px;">
+        <i class="fa-solid fa-gauge-high"></i> Security Dashboard
+    </h1>
+    <p>Trung tâm điều khiển các module tấn công và phòng thủ.</p>
+</div>
+
+<div class="dashboard-grid">
+    
+    <a href="{{ url_for('xss_lab') }}" class="card">
+        <div class="card-icon"><i class="fa-solid fa-syringe"></i></div>
+        <h3>XSS Lab</h3>
+        <p>Thực hành tấn công Cross-Site Scripting.</p>
+    </a>
+
+    <a href="{{ url_for('cmd_injection') }}" class="card" style="border-color: #ff4444;">
+        <div class="card-icon" style="color: #ff4444;"><i class="fa-solid fa-bomb"></i></div>
+        <h3 style="color: #ff4444;">Command Inj.</h3>
+        <p>Thực thi mã lệnh hệ thống từ xa.</p>
+    </a>
+
+    <a href="{{ url_for('steganography') }}" class="card" style="border-color: #00c851;">
+        <div class="card-icon" style="color: #00c851;"><i class="fa-solid fa-image"></i></div>
+        <h3 style="color: #00c851;">Steganography</h3>
+        <p>Giấu tin mật trong hình ảnh.</p>
+    </a>
+
+    <a href="{{ url_for('threat_intel') }}" class="card" style="border-color: #ffbb33;">
+    <div class="card-icon" style="color: #ffbb33;"><i class="fa-solid fa-globe"></i></div>
+    <h3 style="color: #ffbb33;">Threat Intel</h3>
+    <p>Tra cứu uy tín IP & ISP.</p>
+    </a>
+
+    <a href="{{ url_for('ctf') }}" class="card" style="border-color: #ff00ff;">
+        <div class="card-icon" style="color: #ff00ff;"><i class="fa-solid fa-flag"></i></div>
+        <h3 style="color: #ff00ff;">CTF Arena</h3>
+        <p>Giải đố nhận cờ & Leo rank.</p>
+    </a>
+
+    <a href="/ai_phishing" class="card" style="border-color: #00d2ff;">
+        <div class="card-icon" style="color: #00d2ff;"><i class="fa-solid fa-brain"></i></div>
+        <h3>AI Phishing</h3>
+        <p>Phát hiện link độc bằng AI.</p>
+    </a>
+
+    <div class="card" style="opacity: 0.5; cursor: not-allowed;">
+        <div class="card-icon"><i class="fa-solid fa-shield-cat"></i></div>
+        <h3>Red Team</h3>
+        <p>Đang phát triển...</p>
+    </div>
+
+    <div class="card" style="opacity: 0.5; cursor: not-allowed;">
+        <div class="card-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <h3>Blue Team</h3>
+        <p>Đang phát triển...</p>
+    </div>
+
+</div>
+{% endblock %}

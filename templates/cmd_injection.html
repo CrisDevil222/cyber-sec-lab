@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Command Injection{% endblock %}
+{% block content %}
+<div class="tool-box" style="border-color: #ff4444;">
+    <h2 style="color: #ff4444;"><i class="fa-solid fa-terminal"></i> OS Command Injection</h2>
+    <p>Chức năng Ping máy chủ. Thử nhập: <code>8.8.8.8 & dir</code> (Windows) hoặc <code>8.8.8.8 ; ls</code> (Linux).</p>
+    
+    <form method="POST">
+        <label>Target IP:</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" name="ip" placeholder="127.0.0.1" required>
+            <button type="submit" style="width:150px; background:#ff4444;">Ping</button>
+        </div>
+    </form>
+
+    {% if output %}
+    <div style="margin-top:20px;">
+        <h3>Terminal Output:</h3>
+        <pre style="background:black; color:#00ff00; padding:15px; overflow-x:auto;">{{ output }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}E-commerce Security{% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-credit-card"></i> Payment Processor</h2>
+    <p>Kiểm tra thẻ tín dụng thật (Luhn Algorithm) và mô phỏng mã hóa dữ liệu.</p>
+
+    <form method="POST">
+        <label>Credit Card Number:</label>
+        <input type="text" name="cc_number" placeholder="4111 1111 1111 1111 (Visa Mock)" required>
+        
+        <label>CVV:</label>
+        <input type="text" name="cvv" placeholder="123" maxlength="3" required>
+        
+        <button type="submit">Process Payment</button>
+    </form>
+
+    {% if result %}
+    <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 20px;">
+        <h3>Transaction Result</h3>
+        <p><strong>Validity (Luhn Check):</strong> 
+            {% if result.is_valid %}
+                <span style="color: #00ff00; font-weight: bold;">VALID ✅</span>
+            {% else %}
+                <span style="color: #ff4444; font-weight: bold;">INVALID (FAKE CARD) ❌</span>
+            {% endif %}
+        </p>
+        
+        <div style="background: #222; padding: 10px; border-radius: 5px; margin-top: 10px;">
+            <p><strong>Database Storage Simulation:</strong></p>
+            <code>Masked: {{ result.masked_card }}</code><br>
+            <code>AES Key: {{ result.aes_key }}</code><br>
+            <code>Encrypted Blob: {{ result.encrypted_blob }}</code>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Steganography{% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: #00ffaa;"><i class="fa-solid fa-image"></i> Steganography Lab</h2>
+    <p>Giấu thông điệp bí mật vào trong các pixel của ảnh (LSB).</p>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div style="border-right:1px solid #333; padding-right:20px;">
+            <h3>1. Giấu tin (Encode)</h3>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="encode">
+                <label>Chọn ảnh (PNG only):</label>
+                <input type="file" name="image" required accept=".png">
+                <label>Tin nhắn bí mật:</label>
+                <input type="text" name="secret_text" placeholder="Password is 123..." required>
+                <button type="submit">Hide Message</button>
+            </form>
+            {% if encoded_url %}
+                <p style="margin-top:10px;">Thành công! <a href="{{ encoded_url }}" download style="color:#00ffaa;">Tải ảnh chứa tin mật về</a></p>
+                <img src="{{ encoded_url }}" style="max-width:100%; margin-top:10px; border:2px solid #00ffaa;">
+            {% endif %}
+        </div>
+
+        <div>
+            <h3>2. Giải mã (Decode)</h3>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="decode">
+                <label>Upload ảnh Stego:</label>
+                <input type="file" name="image_decode" required accept=".png">
+                <button type="submit" style="background:#555;">Reveal Message</button>
+            </form>
+            {% if decoded_text %}
+                <div style="margin-top:20px; background:#222; padding:10px;">
+                    <h4 style="color:#00ffaa;">Tin nhắn ẩn:</h4>
+                    <code>{{ decoded_text }}</code>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

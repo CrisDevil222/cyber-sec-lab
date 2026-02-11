@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Password Audit{% endblock %}
+{% block styles %}
+<style>
+.verdict-badge {
+    display: inline-block;
+    font-size: 2rem;
+    font-weight: bold;
+}
+.verdict-badge.strong {
+    color: #00ff00;
+}
+.verdict-badge.weak {
+    color: #ff4444;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-stethoscope"></i> Password Strength Audit</h2>
+    <p>Đánh giá độ mạnh mật khẩu dựa trên Entropy toán học.</p>
+
+    <form method="POST">
+        <label>Input Password to Audit:</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" name="password_check" placeholder="Type password..." required>
+            <button type="submit">Audit</button>
+        </div>
+    </form>
+
+    {% if audit %}
+    <div style="margin-top: 20px;">
+        <h3>Audit Report for: "{{ audit.password }}"</h3>
+        
+        <div style="display: flex; justify-content: space-between; margin: 20px 0;">
+            <div style="text-align: center;">
+                <h4>Score</h4>
+                <span style="font-size: 2rem; color: var(--accent-color);">{{ audit.score }}/{{ audit.max_score }}</span>
+            </div>
+            <div style="text-align: center;">
+                <h4>Entropy</h4>
+                <span style="font-size: 2rem; color: #ff9900;">{{ audit.entropy }} bits</span>
+            </div>
+            <div style="text-align: center;">
+                <h4>Verdict</h4>
+                <span class="verdict-badge {% if audit.verdict == 'MẠNH' %}strong{% else %}weak{% endif %}">
+                    {{ audit.verdict }}
+                </span>
+            </div>
+        </div>
+
+        <h4>Policy Checks:</h4>
+        <ul style="list-style: none; padding: 0;">
+            {% for check in audit.checks %}
+                <li style="margin-bottom: 5px;">{{ check }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

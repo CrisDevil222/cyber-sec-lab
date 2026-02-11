@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Digital Auth (2FA){% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-mobile-screen-button"></i> 2FA Authenticator (TOTP)</h2>
+    <p>Hệ thống mô phỏng xác thực 2 bước thời gian thực (Giống Google Authenticator).</p>
+
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h4>Your Secret Key:</h4>
+        <code style="font-size: 1.2rem; color: #ff9900;">{{ secret }}</code>
+        <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">(Trong thực tế, mã này được quét bằng QR Code)</p>
+        
+        <h4 style="margin-top: 20px;">Current Code (Server Time):</h4>
+        <h1 style="color: var(--accent-color); letter-spacing: 5px;">{{ current_code }}</h1>
+        <p style="font-size: 0.8rem;">Code này thay đổi mỗi 30 giây.</p>
+    </div>
+
+    <form method="POST">
+        <label>Verify OTP Code:</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" name="otp_code" placeholder="Nhập 6 số..." maxlength="6" required>
+            <button type="submit">Verify</button>
+        </div>
+    </form>
+
+    {% if status == 'SUCCESS' %}
+        <div class="alert alert-success" style="margin-top: 20px;">✅ Xác thực thành công! Code hợp lệ.</div>
+    {% elif status == 'FAILED' %}
+        <div class="alert alert-danger" style="margin-top: 20px;">❌ Xác thực thất bại! Code sai hoặc hết hạn.</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Công cụ HMAC{% endblock %}
+
+{% block content %}
+<h2>HMAC Calculator (SHA-256)</h2>
+<div class="tool-box">
+    <form method="POST">
+        <label>Input Data:</label>
+        <input type="text" name="data" required placeholder="Nhập dữ liệu...">
+        
+        <label>Secret Key:</label>
+        <input type="text" name="key" required placeholder="Nhập khóa bí mật...">
+        
+        <button type="submit">Hash!</button>
+    </form>
+
+    {% if result %}
+    <div class="result-box">
+        <h3>Kết quả:</h3>
+        <code>{{ result }}</code>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}System Security{% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-server"></i> System Info</h2>
+    <p>Thông tin server thời gian thực.</p>
+    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="card">
+            <h3>OS</h3>
+            <p>{{ info.os }} {{ info.release }}</p>
+        </div>
+        <div class="card">
+            <h3>CPU & RAM</h3>
+            <p>CPU Cores: {{ info.cpu }}</p>
+            <p>RAM Total: {{ info.ram }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

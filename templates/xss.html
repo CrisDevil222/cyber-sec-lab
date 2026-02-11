@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}XSS Lab{% endblock %}
+{% block content %}
+<div class="tool-box">
+    <h2 style="color: #ffcc00;"><i class="fa-solid fa-code"></i> Cross-Site Scripting (XSS)</h2>
+    <p>Thử nhập: <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> hoặc <code>&lt;img src=x onerror=alert('Hacked')&gt;</code></p>
+    
+    <form method="POST">
+        <label>Payload:</label>
+        <input type="text" name="payload" value="<script>alert('XSS')</script>">
+        <select name="mode" style="background:#333; color:white; padding:10px; width:100%; margin:10px 0;">
+            <option value="safe">Safe Mode (Sanitized)</option>
+            <option value="unsafe">Unsafe Mode (Vulnerable)</option>
+        </select>
+        <button type="submit">Execute</button>
+    </form>
+
+    <div style="margin-top:20px; border:1px dashed #555; padding:15px;">
+        <h3>Kết quả hiển thị:</h3>
+        
+        {% if safe %}
+            <p><strong>Safe Mode:</strong> Server đã mã hóa ký tự đặc biệt:</p>
+            <div style="background:#222; padding:10px;">{{ safe }}</div>
+        {% endif %}
+
+        {% if unsafe %}
+            <p><strong>Unsafe Mode:</strong> Trình duyệt sẽ chạy code này:</p>
+            <div style="background:#222; padding:10px;">{{ unsafe | safe }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

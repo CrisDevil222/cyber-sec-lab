@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng ký thành viên{% endblock %}
+
+{% block content %}
+<div class="auth-form-container">
+    <div class="auth-header">
+        <i class="fa-solid fa-user-plus"></i> Đăng ký
+    </div>
+
+    <form method="POST">
+        <div style="text-align: left; margin-bottom: 5px; color: var(--text-secondary);">
+            <i class="fa-solid fa-user"></i> New Username
+        </div>
+        <input type="text" name="username" placeholder="Chọn tên đăng nhập..." required autocomplete="off">
+        
+        <div style="text-align: left; margin-bottom: 5px; margin-top: 15px; color: var(--text-secondary);">
+            <i class="fa-solid fa-key"></i> New Password
+        </div>
+        <input type="password" name="password" placeholder="Thiết lập mật khẩu..." required>
+        
+        <button type="submit" style="margin-top: 25px; background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);">
+            <i class="fa-solid fa-check"></i> Tạo tài khoản
+        </button>
+    </form>
+
+    <p style="margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem;">
+        Đã có tài khoản? 
+        <a href="{{ url_for('login') }}" class="auth-link">Đăng nhập</a>
+    </p>
+</div>
+{% endblock %}

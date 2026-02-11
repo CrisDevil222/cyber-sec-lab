@@ -1,0 +1,221 @@
+/* --- GLOBAL STYLES --- */
+:root {
+    --primary-color: #00d2ff;     /* Màu xanh Neon chủ đạo */
+    --secondary-color: #ff00ff;   /* Màu tím Neon nhấn nhá */
+    --bg-color: #0b0c10;          /* Nền đen sâu thẳm */
+    --glass-bg: rgba(255, 255, 255, 0.05); /* Màu nền kính mờ */
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --text-color: #c5c6c7;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color); /* Màu nền dự phòng nếu Particles chưa load */
+    color: var(--text-color);
+    overflow-x: hidden;
+}
+
+/* --- HIỆU ỨNG PARTICLES (HẠT) --- */
+#particles-js {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: -1; /* Đẩy ra sau cùng */
+    background-image: radial-gradient(circle, #1f2833 0%, #0b0c10 100%);
+}
+
+/* --- NAVBAR (Thanh điều hướng kính) --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 50px;
+    
+    /* Glassmorphism Effect */
+    background: rgba(11, 12, 16, 0.7); 
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: var(--glass-border);
+    
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 25px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    transition: 0.3s;
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+.nav-links a:hover {
+    color: var(--primary-color);
+    background: rgba(0, 210, 255, 0.1);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+}
+
+.btn-logout {
+    border: 1px solid var(--secondary-color);
+    color: var(--secondary-color) !important;
+}
+
+.btn-logout:hover {
+    background: var(--secondary-color) !important;
+    color: white !important;
+}
+
+/* --- CONTAINER & CARDS (Khung kính mờ) --- */
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* Class chung cho các khung nội dung */
+.tool-box, .card, .login-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--glass-border);
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tool-box {
+    margin-bottom: 30px;
+}
+
+/* Hiệu ứng hover cho thẻ Card */
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 210, 255, 0.2);
+    border-color: var(--primary-color);
+}
+
+.card h3 {
+    margin-top: 0;
+    font-size: 1.4rem;
+}
+
+.card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+}
+
+/* --- BUTTONS & INPUTS --- */
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: 1px solid #444;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    outline: none;
+    box-sizing: border-box; /* Sửa lỗi tràn khung */
+}
+
+input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.5);
+}
+
+button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(45deg, var(--primary-color), #007cc2);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    filter: brightness(1.2);
+    transform: scale(1.02);
+}
+
+/* Màu chữ cho các cảnh báo */
+.text-danger { color: #ff4444; }
+.text-success { color: #00c851; }
+
+/* Responsive đơn giản */
+@media (max-width: 768px) {
+    .nav-links {
+        display: none; /* Ẩn menu trên mobile cho gọn (tạm thời) */
+    }
+}
+/* =========================================
+   FIX LỖI DASHBOARD (Thêm vào cuối file)
+   ========================================= */
+
+/* 1. Tạo lưới chia cột cho Dashboard */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+/* 2. Sửa lỗi thẻ Card là Link (<a>) */
+a.card {
+    display: block;        /* Biến thẻ a thành khối hộp */
+    text-decoration: none; /* Bỏ gạch chân */
+    color: var(--text-color); /* Màu chữ chuẩn */
+    text-align: center;    /* Canh giữa nội dung */
+    transition: all 0.3s ease;
+}
+
+/* Hiệu ứng khi di chuột vào Card */
+a.card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+}
+
+/* Chỉnh lại màu tiêu đề trong Card */
+a.card h3 {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    margin: 15px 0 5px 0;
+}
+
+/* Chỉnh lại icon cho to đẹp */
+a.card .card-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+}
+
+a.card p {
+    color: #aaa;
+    font-size: 0.9rem;
+}

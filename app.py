@@ -111,10 +111,15 @@ def submit_feedback():
 
 # --- TRANG ADMIN XEM GÓP Ý ---
 @app.route('/admin/feedbacks')
-# Bạn có thể thêm @login_required vào đây nếu muốn bảo mật
+@login_required
 def view_feedbacks():
-    # Lấy toàn bộ ý kiến từ mới nhất đến cũ nhất
+    # Bảo mật: Chỉ admin mới được vào
+    if current_user.role != 'admin':
+        return "Bạn không có quyền truy cập!", 403
+        
     all_feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
+    # Thay vì trả về chuỗi html thô, ta gọi file giao diện mới
+    return render_template('feedbacks.html', feedbacks=all_feedbacks)
     
     # Render giao diện HTML đơn giản ngay trong Python để khỏi cần tạo file mới
     html = "<h2>Danh sách ý kiến đóng góp:</h2><ul>"

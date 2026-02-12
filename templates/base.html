@@ -38,7 +38,11 @@
                 {% if current_user.role == 'admin' %}
                     <li><a href="{{ url_for('admin') }}" class="admin-link"><i class="fa-solid fa-user-shield"></i> Admin</a></li>
                 {% endif %}
-
+                    <li>
+                        <a href="/admin/feedbacks" style="color: #ffbb33;">
+                        <i class="fa-solid fa-comments"></i> Xem Góp Ý
+                        </a>
+                    </li>
                 <li><a href="{{ url_for('logout') }}" class="btn-logout">Logout</a></li>
             </ul>
             {% endif %}

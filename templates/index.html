@@ -13,25 +13,5 @@
             <a href="{{ url_for('dashboard') }}"><button style="width: 200px; display: inline-block;">Vào Dashboard</button></a>
         {% endif %}
     </div>
-</div>
-<div class="feedback-section" style="max-width: 600px; margin: 50px auto; padding: 30px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border: 1px solid #444; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-    <h3 style="color: var(--primary-color, #00d2ff); margin-bottom: 10px;">
-        <i class="fa-solid fa-comment-dots"></i> Đóng góp ý kiến
-    </h3>
-    <p style="color: #aaa; font-size: 0.95rem; margin-bottom: 20px;">
-        Trang web hiện tại đang còn phát triển, bạn hãy đóng góp ý kiến của bạn để giúp tôi hoàn thiện hơn trong tương lai.
-    </p>
-    
-    <form action="/submit_feedback" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-        <input type="text" name="name" placeholder="Nhập họ và tên của bạn..." required 
-               style="padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; outline: none;">
-        
-        <textarea name="content" rows="4" placeholder="Nhập nội dung đóng góp ý kiến..." required 
-                  style="padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; outline: none; resize: vertical;"></textarea>
-        
-        <button type="submit" style="padding: 12px; background-color: #00C851; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s;">
-            <i class="fa-solid fa-paper-plane"></i> Gửi Đóng Góp
-        </button>
-    </form>
-</div>
+</div>    
 {% endblock %}

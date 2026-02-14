@@ -1,32 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}Đăng ký thành viên{% endblock %}
+{% block title %}Đăng Ký Tài Khoản{% endblock %}
 
 {% block content %}
-<div class="auth-form-container">
-    <div class="auth-header">
-        <i class="fa-solid fa-user-plus"></i> Đăng ký
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    
+    <div style="width: 450px; padding: 40px; background: rgba(0, 0, 0, 0.75); border-radius: 15px; border: 1px solid #00d2ff; box-shadow: 0 0 25px rgba(0, 210, 255, 0.2); backdrop-filter: blur(10px);">
+        
+        <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;">
+            <i class="fa-solid fa-user-plus"></i> Đăng Ký
+        </h2>
+
+        <form method="POST" action="">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Email xác thực</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-envelope" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
+                    <input type="email" name="email" placeholder="Nhập email của bạn..." required 
+                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Tên đăng nhập</label>
+                <div style="position: relative;">
+                    <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
+                    <input type="text" name="username" placeholder="Chọn tên đăng nhập..." required 
+                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Mật khẩu</label>
+                <div style="position: relative;">
+                     <i class="fa-solid fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
+                    <input type="password" name="password" placeholder="Nhập mật khẩu..." required 
+                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
+                </div>
+            </div>
+
+            <button type="submit" style="width: 100%; padding: 12px; background: linear-gradient(45deg, #00d2ff, #007bff); color: white; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);">
+                Tạo Tài Khoản
+            </button>
+
+        </form>
+
+        <div style="margin-top: 25px; text-align: center; border-top: 1px solid #333; padding-top: 20px;">
+            <p style="color: #777; font-size: 0.9rem;">
+                Đã có tài khoản? <a href="{{ url_for('login') }}" style="color: #00d2ff; text-decoration: none; font-weight: bold;">Đăng nhập ngay</a>
+            </p>
+        </div>
+
     </div>
-
-    <form method="POST">
-        <div style="text-align: left; margin-bottom: 5px; color: var(--text-secondary);">
-            <i class="fa-solid fa-user"></i> New Username
-        </div>
-        <input type="text" name="username" placeholder="Chọn tên đăng nhập..." required autocomplete="off">
-        
-        <div style="text-align: left; margin-bottom: 5px; margin-top: 15px; color: var(--text-secondary);">
-            <i class="fa-solid fa-key"></i> New Password
-        </div>
-        <input type="password" name="password" placeholder="Thiết lập mật khẩu..." required>
-        
-        <button type="submit" style="margin-top: 25px; background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);">
-            <i class="fa-solid fa-check"></i> Tạo tài khoản
-        </button>
-    </form>
-
-    <p style="margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem;">
-        Đã có tài khoản? 
-        <a href="{{ url_for('login') }}" class="auth-link">Đăng nhập</a>
-    </p>
 </div>
 {% endblock %}

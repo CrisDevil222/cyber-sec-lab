@@ -1,32 +1,57 @@
 {% extends "base.html" %}
-
-{% block title %}Đăng nhập hệ thống{% endblock %}
-
+{% block title %}Đăng Nhập{% endblock %}
 {% block content %}
-<div class="auth-form-container">
-    <div class="auth-header">
-        <i class="fa-solid fa-user-lock"></i> Đăng nhập
-    </div>
-    
-    <form method="POST">
-        <div style="text-align: left; margin-bottom: 5px; color: var(--text-secondary);">
-            <i class="fa-solid fa-user"></i> Username
-        </div>
-        <input type="text" name="username" placeholder="Nhập tên đăng nhập..." required autocomplete="off">
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div style="width: 400px; padding: 40px; background: rgba(0,0,0,0.8); border: 1px solid #00d2ff; border-radius: 15px; box-shadow: 0 0 20px rgba(0,210,255,0.3);">
+        <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px; letter-spacing: 2px;">SECURE LOGIN</h2>
         
-        <div style="text-align: left; margin-bottom: 5px; margin-top: 15px; color: var(--text-secondary);">
-            <i class="fa-solid fa-key"></i> Password
-        </div>
-        <input type="password" name="password" placeholder="Nhập mật khẩu..." required>
-        
-        <button type="submit" style="margin-top: 25px;">
-            <i class="fa-solid fa-right-to-bracket"></i> Truy cập
-        </button>
-    </form>
+        <form method="POST">
+            <div style="margin-bottom: 20px; position: relative;">
+                <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
+                <input type="text" name="username" placeholder="Tài khoản..." required 
+                       style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; outline: none;">
+            </div>
 
-    <p style="margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem;">
-        Chưa có tài khoản? 
-        <a href="{{ url_for('register') }}" class="auth-link">Đăng ký ngay</a>
-    </p>
+            <div style="margin-bottom: 20px; position: relative;">
+                 <i class="fa-solid fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
+                <input type="password" name="password" id="passInput" placeholder="Mật khẩu..." required 
+                       style="width: 100%; padding: 12px 45px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; outline: none;">
+                 <i class="fa-solid fa-eye" id="eyeIcon" onclick="togglePass()" 
+                   style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; cursor: pointer;"></i>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; font-size: 0.9rem; color: #ccc;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                    <input type="checkbox" name="remember" style="accent-color: #00d2ff; width: 16px; height: 16px; margin: 0;">
+                    <span>Ghi nhớ đăng nhập</span>
+                </label>
+                <a href="{{ url_for('forgot_password') }}" style="color: #ff4444; text-decoration: none; transition: 0.3s;">Quên mật khẩu?</a>
+            </div>
+
+            <button type="submit" style="width: 100%; padding: 12px; background: #00d2ff; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s;">ĐĂNG NHẬP</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 20px; color: #777;">
+            Chưa có tài khoản? <a href="{{ url_for('register') }}" style="color: #00d2ff; text-decoration: none;">Đăng ký ngay</a>
+        </p>
+    </div>
 </div>
+
+<script>
+function togglePass() {
+    var x = document.getElementById("passInput");
+    var icon = document.getElementById("eyeIcon");
+    if (x.type === "password") {
+        x.type = "text";
+        icon.style.color = "#00d2ff";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        x.type = "password";
+        icon.style.color = "#888";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+</script>
 {% endblock %}

@@ -12,6 +12,10 @@ import base64
 import subprocess
 import joblib 
 import requests
+from flask_mail import Mail, Message # <--- THÊM DÒNG NÀY
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import URLSafeTimedSerializer  # <--- THÊM DÒNG NÀY
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
@@ -42,7 +46,22 @@ except ImportError:
 
 # --- CẤU HÌNH APP ---
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'chuoi-bi-mat-cua-ban' # Giữ nguyên cái cũ
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+
+# --- CẤU HÌNH GMAIL ---
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'son99539@gmail.com'
+app.config['MAIL_PASSWORD'] = 'yoyd glqi mjzg azhr'  # Đảm bảo mã này là mã mới nhất bạn vừa tạo
+app.config['MAIL_DEFAULT_SENDER'] = 'son99539@gmail.com'
+
+# Khởi tạo Mail
+mail = Mail(app)
 app.config['SECRET_KEY'] = 'ultimate-cyber-lab-key'
+# Tạo bộ sinh mã Token bí mật cho chức năng Quên mật khẩu
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads_temp'
@@ -63,11 +82,12 @@ login_manager.login_view = 'login'
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)  # <--- CỘT MỚI
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(50), default='user')
     totp_secret = db.Column(db.String(32), nullable=True)
-    score = db.Column(db.Integer, default=0) # Điểm CTF
-    solved_challenges = db.Column(db.String(500), default="") # Lưu ID các bài đã giải
+    score = db.Column(db.Integer, default=0)
+    solved_challenges = db.Column(db.String(500), default="")
 
 from datetime import datetime
 
@@ -161,34 +181,46 @@ def log_action(action):
 # --- AUTH ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated: return redirect(url_for('dashboard'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        # Lấy trạng thái checkbox "Ghi nhớ đăng nhập"
+        remember = True if request.form.get('remember') else False
+
         user = User.query.filter_by(username=username).first()
+
         if user and check_password_hash(user.password, password):
-            login_user(user)
-            log_action('Logged in')
-            return redirect(url_for('dashboard'))
-        flash('Sai thông tin đăng nhập.', 'danger')
+            # Kích hoạt tính năng ghi nhớ (remember=True)
+            login_user(user, remember=remember)
+            flash('Đăng nhập thành công!', 'success')
+            return redirect(request.args.get('next') or url_for('dashboard'))
+        else:
+            flash('Sai tài khoản hoặc mật khẩu!', 'error')
+            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated: return redirect(url_for('dashboard'))
     if request.method == 'POST':
+        email = request.form.get('email')
         username = request.form.get('username')
         password = request.form.get('password')
-        if User.query.filter_by(username=username).first():
-            flash('Username đã tồn tại.', 'warning')
-            return redirect(url_for('register'))
         
-        totp_secret = pyotp.random_base32()
-        new_user = User(username=username, password=generate_password_hash(password), role='user', totp_secret=totp_secret)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Đăng ký thành công.', 'success')
-        return redirect(url_for('login'))
+        # Kiểm tra trùng lặp (Username hoặc Email)
+        user_exists = User.query.filter((User.username == username) | (User.email == email)).first()
+
+        if user_exists:
+            flash('Tên đăng nhập hoặc Email đã được sử dụng!', 'error')
+        else:
+            hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+            # Lưu user mới kèm email
+            new_user = User(email=email, username=username, password=hashed_password, role='user')
+            
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Đăng ký thành công! Vui lòng đăng nhập.', 'success')
+            return redirect(url_for('login'))
+            
     return render_template('register.html')
 
 @app.route('/logout')
@@ -570,24 +602,109 @@ def threat_intel():
         except Exception as e:
             error = f"Lỗi kết nối: {str(e)}"
 
-    return render_template('threat_intel.html', data=data, error=error)    
+    return render_template('threat_intel.html', data=data, error=error)
+
+# --- QUÊN MẬT KHẨU & KHÔI PHỤC ---
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = s.dumps(user.email, salt='reset-password')
+            link = url_for('reset_password', token=token, _external=True)
+            
+            # --- GỬI EMAIL THẬT ---
+            try:
+                msg = Message('Yêu cầu đặt lại mật khẩu - CyberSec Lab', recipients=[email])
+                msg.body = f'''Chào {user.username},
+
+Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản tại Cyber Security Lab.
+Vui lòng bấm vào đường link dưới đây để thay đổi mật khẩu (Link hết hạn sau 5 phút):
+
+{link}
+
+Nếu bạn không yêu cầu điều này, vui lòng bỏ qua email.
+'''
+                mail.send(msg) # Gửi đi
+                flash(f'Đã gửi email khôi phục đến {email}. Hãy kiểm tra hộp thư (cả mục Spam)!', 'info')
+                
+            except Exception as e:
+                print(e) # In lỗi ra terminal nếu gửi thất bại để debug
+                flash('Lỗi gửi email! Vui lòng kiểm tra lại cấu hình.', 'error')
+                
+        else:
+            flash('Email này chưa được đăng ký!', 'error')
+            
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        # Token hết hạn sau 5 phút (300 giây)
+        email = s.loads(token, salt='reset-password', max_age=300)
+    except:
+        flash('Link khôi phục không hợp lệ hoặc đã hết hạn!', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.password = generate_password_hash(password, method='pbkdf2:sha256')
+            db.session.commit()
+            flash('Đổi mật khẩu thành công! Hãy đăng nhập lại.', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('reset_password.html')    
 # --- MAIN: TẠO DATABASE & CHALLENGES ---
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         
-        # 1. Tạo Admin
+        # --- PHẦN 1: TẠO ADMIN (Kiểm tra độc lập) ---
         if not User.query.filter_by(username='admin').first():
-            db.session.add(User(username='admin', password=generate_password_hash('admin123'), role='admin', totp_secret=pyotp.random_base32()))
-        
-        # 2. Tạo CTF Challenges
-        if Challenge.query.count() == 0:
-            chal1 = Challenge(title="SQL Injection Basic", description="Tìm Flag ẩn trong module Red Team SQL Lab.", flag="FLAG{SQL_WIN}", points=100, category="Web")
-            chal2 = Challenge(title="Hidden in Plain Sight", description="Tìm Flag bị giấu trong source code của trang chủ (Inspect Element).", flag="FLAG{HTML_MASTER}", points=50, category="Misc")
-            chal3 = Challenge(title="Stego 101", description="Tải ảnh logo về, có một thông điệp ẩn trong đó.", flag="FLAG{PIXELS_DONT_LIE}", points=200, category="Forensics")
-            db.session.add_all([chal1, chal2, chal3])
-        
-        db.session.commit()
-        print(">>> Database Initialized with CTF Challenges.")
+            admin_user = User(
+                email='admin@gmail.com',  
+                username='admin', 
+                password=generate_password_hash('admin123', method='pbkdf2:sha256'), 
+                role='admin'
+            )
+            db.session.add(admin_user)
+            db.session.commit() # Commit ngay sau khi tạo Admin cho chắc
+            print(">>> Admin account created.")
 
+        # --- PHẦN 2: TẠO CTF CHALLENGES (Kiểm tra độc lập) ---
+        # Code này nằm ngang hàng với if bên trên, không được thụt vào trong
+        if Challenge.query.count() == 0:
+            chal1 = Challenge(
+                title="SQL Injection Basic", 
+                description="Tìm Flag ẩn trong module Red Team SQL Lab.", 
+                flag="FLAG{SQL_WIN}", 
+                points=100, 
+                category="Web"
+            )
+            chal2 = Challenge(
+                title="Hidden in Plain Sight", 
+                description="Tìm Flag bị giấu trong source code của trang chủ (Inspect Element).", 
+                flag="FLAG{HTML_MASTER}", 
+                points=50, 
+                category="Misc"
+            )
+            chal3 = Challenge(
+                title="Stego 101", 
+                description="Tải ảnh logo về, có một thông điệp ẩn trong đó.", 
+                flag="FLAG{PIXELS_DONT_LIE}", 
+                points=200, 
+                category="Forensics"
+            )
+            
+            db.session.add_all([chal1, chal2, chal3])
+            db.session.commit() # Commit riêng cho phần Challenge
+            print(">>> CTF Challenges created.")
+
+        print(">>> Database Initialized successfully.")
+
+    # Khởi chạy server
     app.run(debug=True, port=5000)

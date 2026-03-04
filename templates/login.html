@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Đăng Nhập{% endblock %}
+
 {% block content %}
 <div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
     <div style="width: 400px; padding: 40px; background: rgba(0,0,0,0.8); border: 1px solid #00d2ff; border-radius: 15px; box-shadow: 0 0 20px rgba(0,210,255,0.3);">
         <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px; letter-spacing: 2px;">SECURE LOGIN</h2>
         
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
             <div style="margin-bottom: 20px; position: relative;">
                 <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
                 <input type="text" name="username" placeholder="Tài khoản..." required 

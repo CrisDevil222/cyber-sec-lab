@@ -12,6 +12,7 @@ import base64
 import subprocess
 import joblib 
 import requests
+from datetime import datetime
 from flask_mail import Mail, Message # <--- THÊM DÒNG NÀY
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -25,7 +26,7 @@ from werkzeug.utils import secure_filename
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.fernet import Fernet
-
+from flask_wtf.csrf import CSRFProtect
 # --- QUAN TRỌNG: Phải định nghĩa hàm này y hệt như bên file train ---
 def custom_tokenizer(url):
     return str(url).split('.')
@@ -46,17 +47,21 @@ except ImportError:
 
 # --- CẤU HÌNH APP ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'chuoi-bi-mat-cua-ban' # Giữ nguyên cái cũ
+app.config['SECRET_KEY'] = 'chuoi-bi-mat-cua-ban' 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+# ... (nếu có các app.config khác thì cứ để ở đây) ...
+
+# CHUYỂN DÒNG NÀY XUỐNG DƯỚI CÙNG (Sau khi đã có Secret Key)
+csrf = CSRFProtect(app)
 
 # --- CẤU HÌNH GMAIL ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'son99539@gmail.com'
-app.config['MAIL_PASSWORD'] = 'yoyd glqi mjzg azhr'  # Đảm bảo mã này là mã mới nhất bạn vừa tạo
-app.config['MAIL_DEFAULT_SENDER'] = 'son99539@gmail.com'
-
+app.config['MAIL_PORT'] = 465                 # <-- Đổi từ 587 sang 465
+app.config['MAIL_USE_TLS'] = False            # <-- Tắt TLS
+app.config['MAIL_USE_SSL'] = True             # <-- Bật SSL lên
+app.config['MAIL_USERNAME'] = 'crishoang09@gmail.com'
+app.config['MAIL_PASSWORD'] = 'hfgx mygd zycl kwvn'  # Đảm bảo mã này vẫn đúng nhé
+app.config['MAIL_DEFAULT_SENDER'] = 'crishoang09@gmail.com'
 # Khởi tạo Mail
 mail = Mail(app)
 app.config['SECRET_KEY'] = 'ultimate-cyber-lab-key'
@@ -94,25 +99,33 @@ from datetime import datetime
 # --- BẢNG LƯU TRỮ ĐÓNG GÓP Ý KIẾN ---
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    username = db.Column(db.String(150), nullable=False)  # Lưu tên người góp ý (có thể là username hoặc email)
+    content = db.Column(db.String(1000), nullable=False)  # Nội dung góp ý
+    timestamp = db.Column(db.DateTime, default=datetime.now)  # Thời gian góp
+    
+    
 
 # --- ROUTE XỬ LÝ FORM GÓP Ý ---
 @app.route('/submit_feedback', methods=['POST'])
+@login_required # Yêu cầu đăng nhập mới được góp ý
 def submit_feedback():
-    name = request.form.get('name')
-    content = request.form.get('content')
+    # Lấy nội dung người dùng nhập từ form (giả sử ô input name="content" hoặc "message")
+    # Tùy thuộc vào HTML của bạn đặt name là gì nhé, thường là 'content' hoặc 'message'
+    noi_dung = request.form.get('content') 
     
-    if name and content:
-        new_fb = Feedback(name=name, content=content)
-        db.session.add(new_fb)
-        db.session.commit()
-        # Hiện thông báo cảm ơn
-        flash('Cảm ơn bạn đã đóng góp ý kiến! Quản trị viên sẽ xem xét.', 'success')
+    if noi_dung:
+        # 1. Tạo một bản ghi Feedback mới
+        new_feedback = Feedback(username=current_user.username, content=noi_dung)
         
-    # Quay lại trang trước đó
-    return redirect(request.referrer or url_for('index'))
+        # 2. Thêm vào Database và Lưu lại (Lưu vĩnh viễn)
+        db.session.add(new_feedback)
+        db.session.commit()
+        
+        flash('Cảm ơn bạn đã đóng góp ý kiến!', 'success')
+    else:
+        flash('Vui lòng nhập nội dung góp ý.', 'error')
+        
+    return redirect(url_for('dashboard')) # Hoặc trang nào bạn muốn trả về
 
     # ... (Phần trên của hàm submit_feedback) ...
     if name and content:
@@ -132,22 +145,16 @@ def submit_feedback():
 # --- TRANG ADMIN XEM GÓP Ý ---
 @app.route('/admin/feedbacks')
 @login_required
-def view_feedbacks():
-    # Bảo mật: Chỉ admin mới được vào
+def admin_feedbacks():
+    # Chặn không cho User thường vào xem
     if current_user.role != 'admin':
-        return "Bạn không có quyền truy cập!", 403
+        abort(403) 
         
-    all_feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
-    # Thay vì trả về chuỗi html thô, ta gọi file giao diện mới
-    return render_template('feedbacks.html', feedbacks=all_feedbacks)
+    # Lấy TẤT CẢ góp ý từ Database ra
+    all_feedbacks = Feedback.query.all()
     
-    # Render giao diện HTML đơn giản ngay trong Python để khỏi cần tạo file mới
-    html = "<h2>Danh sách ý kiến đóng góp:</h2><ul>"
-    for fb in all_feedbacks:
-        time_str = fb.timestamp.strftime('%Y-%m-%d %H:%M')
-        html += f"<li style='margin-bottom:15px'><b>{fb.name}</b> <i>({time_str})</i>: <br>{fb.content}</li>"
-    html += "</ul><a href='/'>Quay lại trang chủ</a>"
-    return html
+    # Truyền sang file HTML để hiển thị
+    return render_template('feedbacks.html', feedbacks=all_feedbacks)
 
 # ==========================================================
 # (Và bên dưới này tiếp tục là các route cũ của bạn...)
@@ -167,7 +174,7 @@ class Challenge(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def log_action(action):
     if current_user.is_authenticated:
@@ -705,6 +712,6 @@ if __name__ == '__main__':
             print(">>> CTF Challenges created.")
 
         print(">>> Database Initialized successfully.")
-
+if __name__ == '__main__':
     # Khởi chạy server
-    app.run(debug=True, port=5000)
+    app.run(debug=True, use_reloader=False)

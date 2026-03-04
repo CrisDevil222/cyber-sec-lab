@@ -6,52 +6,68 @@
     <title>{% block title %}Cyber Security Lab{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* Hiệu ứng sáng Logo khi rê chuột vào */
+        .logo-link:hover span, .logo-link:hover i {
+            text-shadow: 0 0 20px #00d2ff, 0 0 30px #00d2ff;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
     <div id="particles-js"></div>
+    
     <header>
         <nav class="navbar">
+            
             <div class="gtranslate_wrapper" style="margin-left: 15px; display: inline-block;"></div>
             <script>
-            window.gtranslateSettings = {
-        "default_language": "vi",
-        "languages": ["vi", "en"],
-        "wrapper_selector": ".gtranslate_wrapper",
-        "flag_size": 24
-    }
-</script>
-<script src="https://cdn.gtranslate.net/widgets/latest/flags.js" defer></script>
-            <div class="logo">
-                <i class="fa-solid fa-shield-halved"></i> Cyber Security Lab
-            </div>
-            {% if current_user.is_authenticated %}
-            <ul class="nav-links">
-                <li><a href="{{ url_for('index') }}">Home</a></li>
-                
-                {% if current_user.role == 'admin' or current_user.role == 'user' %}
-                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li><a href="{{ url_for('hmac_tool') }}">HMAC</a></li>
-                    <li><a href="{{ url_for('rsa_tool') }}">RSA</a></li>
-                {% endif %}
+                window.gtranslateSettings = {
+                    "default_language": "vi",
+                    "languages": ["vi", "en"],
+                    "wrapper_selector": ".gtranslate_wrapper",
+                    "flag_size": 24
+                }
+            </script>
+            <script src="https://cdn.gtranslate.net/widgets/latest/flags.js" defer></script>
+            
+            <a href="{{ url_for('index') }}" class="logo-link" style="text-decoration: none; display: flex; align-items: center; gap: 8px; color: #00d2ff; transition: 0.3s; text-shadow: 0 0 10px rgba(0, 210, 255, 0.4);">
+                <i class="fa-solid fa-shield-halved" style="font-size: 1.6rem;"></i>
+                <span style="font-size: 1.5rem; font-weight: bold; letter-spacing: 1px;">Cyber Security Lab</span>
+            </a>
 
-                {% if current_user.role == 'admin' %}
-                    <li><a href="{{ url_for('admin') }}" class="admin-link"><i class="fa-solid fa-user-shield"></i> Admin</a></li>
+            <ul class="nav-links">
+                
+                <li>
+                    <a href="{{ url_for('about') }}" style="color: #00d2ff; font-weight: bold;">
+                        <i class="fa-solid fa-circle-info"></i> Giới thiệu
+                    </a>
+                </li>
+
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    
+                    {% if current_user.role == 'admin' or current_user.role == 'user' %}
+                        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li><a href="{{ url_for('hmac_tool') }}">HMAC</a></li>
+                        <li><a href="{{ url_for('rsa_tool') }}">RSA</a></li>
+                    {% endif %}
+
+                    {% if current_user.role == 'admin' %}
+                        <li><a href="{{ url_for('admin') }}" class="admin-link"><i class="fa-solid fa-user-shield"></i> Admin</a></li>
+                        <li>
+                            <a href="/admin/feedbacks" style="color: #ffbb33;">
+                                <i class="fa-solid fa-comments"></i> Xem Góp Ý
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    <li><a href="{{ url_for('logout') }}" class="btn-logout">Logout</a></li>
                 {% endif %}
-                    <li>
-                        <a href="/admin/feedbacks" style="color: #ffbb33;">
-                        <i class="fa-solid fa-comments"></i> Xem Góp Ý
-                        </a>
-                    </li>
-                <li><a href="{{ url_for('logout') }}" class="btn-logout">Logout</a></li>
             </ul>
-            {% endif %}
         </nav>
-        <li>
-    <a href="{{ url_for('about') }}" style="color: #00d2ff; font-weight: bold;">
-        <i class="fa-solid fa-circle-info"></i> Giới thiệu
-    </a>
-</li>
     </header>
 
     <main class="container">
@@ -77,19 +93,18 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    
     <script>
         particlesJS("particles-js", {
             "particles": {
                 "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
-                "color": { "value": "#00d2ff" }, /* Màu hạt: Xanh Neon */
+                "color": { "value": "#00d2ff" }, 
                 "shape": { "type": "circle" },
                 "opacity": { "value": 0.5, "random": false },
                 "size": { "value": 3, "random": true },
                 "line_linked": {
                     "enable": true,
                     "distance": 150,
-                    "color": "#00d2ff", /* Màu dây nối: Xanh Neon */
+                    "color": "#00d2ff",
                     "opacity": 0.4,
                     "width": 1
                 },
@@ -98,7 +113,7 @@
             "interactivity": {
                 "detect_on": "canvas",
                 "events": {
-                    "onhover": { "enable": true, "mode": "grab" }, /* Di chuột vào sẽ hút các hạt */
+                    "onhover": { "enable": true, "mode": "grab" },
                     "onclick": { "enable": true, "mode": "push" },
                     "resize": true
                 },
@@ -109,5 +124,5 @@
             "retina_detect": true
         });
     </script>
-    </body>
+</body>
 </html>

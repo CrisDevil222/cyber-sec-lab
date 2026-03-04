@@ -60,6 +60,7 @@
     </div>
 
 </div>
+
 <div class="feedback-section" style="max-width: 600px; margin: 50px auto; padding: 30px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border: 1px solid #444; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
     <h3 style="color: var(--primary-color, #00d2ff); margin-bottom: 10px;">
         <i class="fa-solid fa-comment-dots"></i> Đóng góp ý kiến
@@ -69,6 +70,9 @@
     </p>
     
     <form action="/submit_feedback" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+        
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
         <input type="text" name="name" placeholder="Nhập họ và tên của bạn..." required 
                style="padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; outline: none;">
         

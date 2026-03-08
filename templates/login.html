@@ -1,60 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Đăng Nhập{% endblock %}
-
+{% block title %}Đăng Nhập — Cyber Security Lab{% endblock %}
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
-    <div style="width: 400px; padding: 40px; background: rgba(0,0,0,0.8); border: 1px solid #00d2ff; border-radius: 15px; box-shadow: 0 0 20px rgba(0,210,255,0.3);">
-        <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px; letter-spacing: 2px;">SECURE LOGIN</h2>
-        
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            
-            <div style="margin-bottom: 20px; position: relative;">
-                <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
-                <input type="text" name="username" placeholder="Tài khoản..." required 
-                       style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; outline: none;">
-            </div>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h2 class="auth-title"><i class="fa-solid fa-terminal"></i> Secure Login</h2>
 
-            <div style="margin-bottom: 20px; position: relative;">
-                 <i class="fa-solid fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
-                <input type="password" name="password" id="passInput" placeholder="Mật khẩu..." required 
-                       style="width: 100%; padding: 12px 45px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; outline: none;">
-                 <i class="fa-solid fa-eye" id="eyeIcon" onclick="togglePass()" 
-                   style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; cursor: pointer;"></i>
-            </div>
+    <form method="POST" style="display:flex;flex-direction:column;gap:.2rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; font-size: 0.9rem; color: #ccc;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
-                    <input type="checkbox" name="remember" style="accent-color: #00d2ff; width: 16px; height: 16px; margin: 0;">
-                    <span>Ghi nhớ đăng nhập</span>
-                </label>
-                <a href="{{ url_for('forgot_password') }}" style="color: #ff4444; text-decoration: none; transition: 0.3s;">Quên mật khẩu?</a>
-            </div>
+      <label>Tài khoản</label>
+      <div class="input-group">
+        <i class="fa-solid fa-user prefix"></i>
+        <input type="text" name="username" placeholder="Username..." required autocomplete="username">
+      </div>
 
-            <button type="submit" style="width: 100%; padding: 12px; background: #00d2ff; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s;">ĐĂNG NHẬP</button>
-        </form>
-        
-        <p style="text-align: center; margin-top: 20px; color: #777;">
-            Chưa có tài khoản? <a href="{{ url_for('register') }}" style="color: #00d2ff; text-decoration: none;">Đăng ký ngay</a>
-        </p>
-    </div>
+      <label>Mật khẩu</label>
+      <div class="input-group has-suffix">
+        <i class="fa-solid fa-lock prefix"></i>
+        <input type="password" name="password" id="passInput" placeholder="Password..." required autocomplete="current-password">
+        <i class="fa-solid fa-eye suffix" id="eyeIcon" onclick="togglePass()"></i>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:1rem 0;">
+        <label style="display:flex;align-items:center;gap:.5rem;text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text);margin:0;cursor:pointer;">
+          <input type="checkbox" name="remember"> Ghi nhớ đăng nhập
+        </label>
+        <a href="{{ url_for('forgot_password') }}" style="font-family:var(--mono);font-size:.72rem;color:var(--c2);text-decoration:none;transition:opacity .2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">Quên mật khẩu?</a>
+      </div>
+
+      <button type="submit" style="width:100%;margin-top:.5rem;">
+        <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+      </button>
+    </form>
+
+    <hr class="sep">
+    <p style="text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--text-dim);">
+      Chưa có tài khoản?
+      <a href="{{ url_for('register') }}" style="color:var(--c);text-decoration:none;font-weight:500;">Đăng ký ngay →</a>
+    </p>
+  </div>
 </div>
-
 <script>
 function togglePass() {
-    var x = document.getElementById("passInput");
-    var icon = document.getElementById("eyeIcon");
-    if (x.type === "password") {
-        x.type = "text";
-        icon.style.color = "#00d2ff";
-        icon.classList.remove("fa-eye");
-        icon.classList.add("fa-eye-slash");
-    } else {
-        x.type = "password";
-        icon.style.color = "#888";
-        icon.classList.remove("fa-eye-slash");
-        icon.classList.add("fa-eye");
-    }
+  const x = document.getElementById("passInput"), i = document.getElementById("eyeIcon");
+  const show = x.type === "password";
+  x.type = show ? "text" : "password";
+  i.className = show ? "fa-solid fa-eye-slash suffix" : "fa-solid fa-eye suffix";
+  i.style.color = show ? "var(--c)" : "";
 }
 </script>
 {% endblock %}

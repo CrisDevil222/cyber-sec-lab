@@ -2,18 +2,21 @@
 {% block title %}System Security{% endblock %}
 {% block content %}
 <div class="tool-box">
-    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-server"></i> System Info</h2>
-    <p>Thông tin server thời gian thực.</p>
-    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
-        <div class="card">
-            <h3>OS</h3>
-            <p>{{ info.os }} {{ info.release }}</p>
-        </div>
-        <div class="card">
-            <h3>CPU & RAM</h3>
-            <p>CPU Cores: {{ info.cpu }}</p>
-            <p>RAM Total: {{ info.ram }}</p>
-        </div>
-    </div>
+  <h2><i class="fa-solid fa-server"></i> System Security Monitor</h2>
+  <p>Thông tin hệ thống và trạng thái bảo mật của server.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;">
+  {% for label, value, icon in [
+    ('Operating System', info.os, 'fa-brands fa-linux'),
+    ('CPU Cores', info.cpu, 'fa-solid fa-microchip'),
+    ('Total RAM', info.ram, 'fa-solid fa-memory')
+  ] %}
+  <div class="tool-box" style="margin-bottom:0;text-align:center;padding:2rem 1rem;">
+    <i class="{{ icon }}" style="font-size:2rem;color:var(--c);text-shadow:0 0 12px var(--c-glow);margin-bottom:.8rem;display:block;"></i>
+    <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem;">{{ label|upper }}</div>
+    <div style="font-family:var(--display);font-size:1.4rem;font-weight:700;color:#fff;">{{ value }}</div>
+  </div>
+  {% endfor %}
 </div>
 {% endblock %}

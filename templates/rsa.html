@@ -1,22 +1,47 @@
 {% extends "base.html" %}
-{% block title %}RSA Tool{% endblock %}
-
+{% block title %}RSA Cryptography{% endblock %}
 {% block content %}
-<h2>RSA Encryption / Decryption</h2>
 <div class="tool-box">
-    <form method="POST">
-        <label>Message (Plaintext):</label>
-        <textarea name="message" style="width: 100%; background: #222; color: #0f0; border: 1px solid #0f0;" rows="4"></textarea>
-        
-        <div style="display: flex; gap: 10px;">
-            <button type="submit" name="action" value="encrypt">Encrypt</button>
-            <button type="submit" name="action" value="decrypt">Decrypt</button>
-        </div>
+  <h2><i class="fa-solid fa-lock"></i> RSA Cryptography Lab</h2>
+  <p>Tạo cặp khóa RSA, mã hóa và giải mã dữ liệu bằng thuật toán mã hóa bất đối xứng.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;">
+  <div class="tool-box" style="margin-bottom:0;">
+    <h2 style="font-size:.9rem;"><i class="fa-solid fa-key"></i> Generate Key Pair</h2>
+    <form method="POST" action="{{ url_for('rsa_tool') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="action" value="generate">
+      <button type="submit" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate RSA Keys</button>
     </form>
-    
-    <div style="margin-top: 20px;">
-        <h3>Output:</h3>
-        <code style="white-space: pre-wrap;">{{ result if result else 'Waiting for input...' }}</code>
+    {% if public_key %}
+    <label style="margin-top:1rem;">Public Key</label>
+    <textarea readonly rows="5" style="font-size:.7rem;color:var(--c3);">{{ public_key }}</textarea>
+    <label>Private Key</label>
+    <textarea readonly rows="7" style="font-size:.7rem;color:var(--c2);">{{ private_key }}</textarea>
+    {% endif %}
+  </div>
+
+  <div class="tool-box" style="margin-bottom:0;">
+    <h2 style="font-size:.9rem;"><i class="fa-solid fa-envelope-open-text"></i> Encrypt / Decrypt</h2>
+    <form method="POST" action="{{ url_for('rsa_tool') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <label>Action</label>
+      <select name="action">
+        <option value="encrypt">Mã hóa (Encrypt)</option>
+        <option value="decrypt">Giải mã (Decrypt)</option>
+      </select>
+      <label>Key (Public cho Encrypt / Private cho Decrypt)</label>
+      <textarea name="key" rows="5" placeholder="Paste key vào đây..."></textarea>
+      <label>Message</label>
+      <textarea name="message" rows="3" placeholder="Nhập nội dung..."></textarea>
+      <button type="submit" style="width:100%;margin-top:.8rem;"><i class="fa-solid fa-arrows-rotate"></i> Process</button>
+    </form>
+    {% if rsa_result %}
+    <div class="result-box">
+      <code style="display:block;word-break:break-all;font-size:.75rem;">{{ rsa_result }}</code>
     </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

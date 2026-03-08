@@ -1,87 +1,109 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - Cyber Lab{% endblock %}
-
+{% block title %}Dashboard — Cyber Security Lab{% endblock %}
 {% block content %}
-<div class="tool-box" style="text-align: center;">
-    <h1 style="color: var(--primary-color); text-transform: uppercase; letter-spacing: 2px;">
-        <i class="fa-solid fa-gauge-high"></i> Security Dashboard
-    </h1>
-    <p>Trung tâm điều khiển các module tấn công và phòng thủ.</p>
+
+<div class="tool-box" style="text-align:center;padding:1.5rem 2rem;">
+  <div style="font-family:var(--mono);font-size:.68rem;letter-spacing:.2em;color:var(--text-dim);margin-bottom:.5rem;">WELCOME BACK, <span style="color:var(--c);">{{ name|upper }}</span></div>
+  <h1 style="font-family:var(--display);font-size:1.8rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;margin-bottom:.4rem;">
+    <i class="fa-solid fa-gauge-high" style="color:var(--c);"></i> Security Dashboard
+  </h1>
+  <p style="color:var(--text-dim);font-family:var(--mono);font-size:.8rem;">Trung tâm điều khiển các module tấn công và phòng thủ.</p>
 </div>
 
 <div class="dashboard-grid">
-    
-    <a href="{{ url_for('xss_lab') }}" class="card">
-        <div class="card-icon"><i class="fa-solid fa-syringe"></i></div>
-        <h3>XSS Lab</h3>
-        <p>Thực hành tấn công Cross-Site Scripting.</p>
-    </a>
 
-    <a href="{{ url_for('cmd_injection') }}" class="card" style="border-color: #ff4444;">
-        <div class="card-icon" style="color: #ff4444;"><i class="fa-solid fa-bomb"></i></div>
-        <h3 style="color: #ff4444;">Command Inj.</h3>
-        <p>Thực thi mã lệnh hệ thống từ xa.</p>
-    </a>
+  <a href="{{ url_for('xss_lab') }}" class="card">
+    <span class="card-icon"><i class="fa-solid fa-syringe"></i></span>
+    <h3>XSS Lab</h3>
+    <p>Cross-Site Scripting attack simulation.</p>
+  </a>
 
-    <a href="{{ url_for('steganography') }}" class="card" style="border-color: #00c851;">
-        <div class="card-icon" style="color: #00c851;"><i class="fa-solid fa-image"></i></div>
-        <h3 style="color: #00c851;">Steganography</h3>
-        <p>Giấu tin mật trong hình ảnh.</p>
-    </a>
+  <a href="{{ url_for('cmd_injection') }}" class="card" style="--c:var(--c2);--c-glow:var(--c2-glow);">
+    <span class="card-icon" style="color:var(--c2);text-shadow:0 0 12px var(--c2-glow);"><i class="fa-solid fa-bomb"></i></span>
+    <h3 style="color:var(--c2);">Command Inj.</h3>
+    <p>Thực thi mã lệnh hệ thống từ xa.</p>
+  </a>
 
-    <a href="{{ url_for('threat_intel') }}" class="card" style="border-color: #ffbb33;">
-    <div class="card-icon" style="color: #ffbb33;"><i class="fa-solid fa-globe"></i></div>
-    <h3 style="color: #ffbb33;">Threat Intel</h3>
-    <p>Tra cứu uy tín IP & ISP.</p>
-    </a>
+  <a href="{{ url_for('steganography') }}" class="card" style="--card-accent:#00ff88;">
+    <span class="card-icon" style="color:#00ff88;text-shadow:0 0 12px rgba(0,255,136,.4);"><i class="fa-solid fa-image"></i></span>
+    <h3 style="color:#00ff88;">Steganography</h3>
+    <p>Giấu tin mật trong hình ảnh (LSB).</p>
+  </a>
 
-    <a href="{{ url_for('ctf') }}" class="card" style="border-color: #ff00ff;">
-        <div class="card-icon" style="color: #ff00ff;"><i class="fa-solid fa-flag"></i></div>
-        <h3 style="color: #ff00ff;">CTF Arena</h3>
-        <p>Giải đố nhận cờ & Leo rank.</p>
-    </a>
+  <a href="{{ url_for('threat_intel') }}" class="card">
+    <span class="card-icon" style="color:var(--c4);text-shadow:0 0 12px rgba(255,204,0,.4);"><i class="fa-solid fa-globe"></i></span>
+    <h3 style="color:var(--c4);">Threat Intel</h3>
+    <p>Tra cứu uy tín IP & phân tích ISP.</p>
+  </a>
 
-    <a href="/ai_phishing" class="card" style="border-color: #00d2ff;">
-        <div class="card-icon" style="color: #00d2ff;"><i class="fa-solid fa-brain"></i></div>
-        <h3>AI Phishing</h3>
-        <p>Phát hiện link độc bằng AI.</p>
-    </a>
+  <a href="{{ url_for('ctf') }}" class="card">
+    <span class="card-icon" style="color:#ff44ff;text-shadow:0 0 12px rgba(255,68,255,.4);"><i class="fa-solid fa-flag"></i></span>
+    <h3 style="color:#ff44ff;">CTF Arena</h3>
+    <p>Giải đố nhận cờ & leo bảng xếp hạng.</p>
+  </a>
 
-    <div class="card" style="opacity: 0.5; cursor: not-allowed;">
-        <div class="card-icon"><i class="fa-solid fa-shield-cat"></i></div>
-        <h3>Red Team</h3>
-        <p>Đang phát triển...</p>
-    </div>
+  <a href="{{ url_for('ai_phishing') }}" class="card">
+    <span class="card-icon"><i class="fa-solid fa-brain"></i></span>
+    <h3>AI Phishing</h3>
+    <p>Phát hiện đường link độc hại bằng ML.</p>
+  </a>
 
-    <div class="card" style="opacity: 0.5; cursor: not-allowed;">
-        <div class="card-icon"><i class="fa-solid fa-user-shield"></i></div>
-        <h3>Blue Team</h3>
-        <p>Đang phát triển...</p>
-    </div>
+  <a href="{{ url_for('red_team') }}" class="card">
+    <span class="card-icon" style="color:#ff2244;text-shadow:0 0 12px rgba(255,34,68,.4);"><i class="fa-solid fa-user-secret"></i></span>
+    <h3 style="color:#ff2244;">Red Team</h3>
+    <p>Mô phỏng tấn công & khai thác lỗ hổng.</p>
+  </a>
+
+  <a href="{{ url_for('blue_team') }}" class="card">
+    <span class="card-icon" style="color:#00aaff;text-shadow:0 0 12px rgba(0,170,255,.4);"><i class="fa-solid fa-user-shield"></i></span>
+    <h3 style="color:#00aaff;">Blue Team</h3>
+    <p>Phòng thủ, giám sát & phản ứng sự cố.</p>
+  </a>
+
+  <a href="{{ url_for('digital_auth') }}" class="card">
+    <span class="card-icon" style="color:#ff9900;text-shadow:0 0 12px rgba(255,153,0,.4);"><i class="fa-solid fa-mobile-screen-button"></i></span>
+    <h3 style="color:#ff9900;">2FA Auth</h3>
+    <p>Xác thực 2 bước TOTP (Google Auth).</p>
+  </a>
+
+  <a href="{{ url_for('vulnerability') }}" class="card">
+    <span class="card-icon"><i class="fa-solid fa-satellite-dish"></i></span>
+    <h3>Port Scanner</h3>
+    <p>Quét cổng & kiểm tra lỗ hổng mạng.</p>
+  </a>
+
+  <a href="{{ url_for('malware') }}" class="card">
+    <span class="card-icon" style="color:#ff6644;text-shadow:0 0 12px rgba(255,102,68,.3);"><i class="fa-solid fa-virus"></i></span>
+    <h3 style="color:#ff6644;">Malware Lab</h3>
+    <p>Phân tích file & tính hash kiểm tra.</p>
+  </a>
+
+  <a href="{{ url_for('assessment') }}" class="card">
+    <span class="card-icon" style="color:#aaffaa;text-shadow:0 0 12px rgba(170,255,170,.3);"><i class="fa-solid fa-stethoscope"></i></span>
+    <h3 style="color:#aaffaa;">Password Audit</h3>
+    <p>Đánh giá độ mạnh mật khẩu.</p>
+  </a>
 
 </div>
 
-<div class="feedback-section" style="max-width: 600px; margin: 50px auto; padding: 30px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border: 1px solid #444; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-    <h3 style="color: var(--primary-color, #00d2ff); margin-bottom: 10px;">
-        <i class="fa-solid fa-comment-dots"></i> Đóng góp ý kiến
-    </h3>
-    <p style="color: #aaa; font-size: 0.95rem; margin-bottom: 20px;">
-        Trang web hiện tại đang còn phát triển, bạn hãy đóng góp ý kiến của bạn để giúp tôi hoàn thiện hơn trong tương lai.
-    </p>
-    
-    <form action="/submit_feedback" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-        
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        
-        <input type="text" name="name" placeholder="Nhập họ và tên của bạn..." required 
-               style="padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; outline: none;">
-        
-        <textarea name="content" rows="4" placeholder="Nhập nội dung đóng góp ý kiến..." required 
-                  style="padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; outline: none; resize: vertical;"></textarea>
-        
-        <button type="submit" style="padding: 12px; background-color: #00C851; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s;">
-            <i class="fa-solid fa-paper-plane"></i> Gửi Đóng Góp
-        </button>
-    </form>
+<!-- Feedback -->
+<div class="feedback-section">
+  <h3 class="feedback-title"><i class="fa-solid fa-comment-dots"></i> Đóng Góp Ý Kiến</h3>
+  <p class="feedback-sub">Góp ý giúp dự án hoàn thiện hơn. Mọi phản hồi đều được đọc.</p>
+
+  <form action="/submit_feedback" method="POST" style="display:flex;flex-direction:column;gap:.8rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div>
+      <label style="margin-top:0;">Họ và tên</label>
+      <input type="text" name="name" placeholder="Nhập tên của bạn..." required>
+    </div>
+    <div>
+      <label>Nội dung</label>
+      <textarea name="content" rows="3" placeholder="Nhập nội dung góp ý..." required></textarea>
+    </div>
+    <button type="submit" class="btn-success" style="align-self:flex-end;padding:.65rem 1.6rem;">
+      <i class="fa-solid fa-paper-plane"></i> Gửi Góp Ý
+    </button>
+  </form>
 </div>
 {% endblock %}

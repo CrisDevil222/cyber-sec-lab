@@ -1,38 +1,36 @@
 {% extends "base.html" %}
-{% block title %}E-commerce Security{% endblock %}
+{% block title %}Payment Processor{% endblock %}
 {% block content %}
 <div class="tool-box">
-    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-credit-card"></i> Payment Processor</h2>
-    <p>Kiểm tra thẻ tín dụng thật (Luhn Algorithm) và mô phỏng mã hóa dữ liệu.</p>
+  <h2><i class="fa-solid fa-credit-card"></i> Payment Processor</h2>
+  <p>Kiểm tra thẻ tín dụng bằng <strong>Luhn Algorithm</strong> và mô phỏng mã hóa dữ liệu thanh toán.</p>
 
-    <form method="POST">
-        <label>Credit Card Number:</label>
-        <input type="text" name="cc_number" placeholder="4111 1111 1111 1111 (Visa Mock)" required>
-        
-        <label>CVV:</label>
-        <input type="text" name="cvv" placeholder="123" maxlength="3" required>
-        
-        <button type="submit">Process Payment</button>
-    </form>
+  <form method="POST" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <label>Card Number</label>
+    <input type="text" name="cc_number" placeholder="4111 1111 1111 1111 (Visa test)" required>
+    <label>CVV</label>
+    <input type="text" name="cvv" placeholder="123" maxlength="3" required style="max-width:120px;">
+    <button type="submit" style="margin-top:1rem;"><i class="fa-solid fa-lock"></i> Process Payment</button>
+  </form>
 
-    {% if result %}
-    <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 20px;">
-        <h3>Transaction Result</h3>
-        <p><strong>Validity (Luhn Check):</strong> 
-            {% if result.is_valid %}
-                <span style="color: #00ff00; font-weight: bold;">VALID ✅</span>
-            {% else %}
-                <span style="color: #ff4444; font-weight: bold;">INVALID (FAKE CARD) ❌</span>
-            {% endif %}
-        </p>
-        
-        <div style="background: #222; padding: 10px; border-radius: 5px; margin-top: 10px;">
-            <p><strong>Database Storage Simulation:</strong></p>
-            <code>Masked: {{ result.masked_card }}</code><br>
-            <code>AES Key: {{ result.aes_key }}</code><br>
-            <code>Encrypted Blob: {{ result.encrypted_blob }}</code>
-        </div>
+  {% if result %}
+  <div class="result-box">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+      <span style="font-family:var(--mono);font-size:.8rem;color:var(--text-dim);">Luhn Check:</span>
+      {% if result.is_valid %}
+        <span class="badge badge-green"><i class="fa-solid fa-check"></i> VALID</span>
+      {% else %}
+        <span class="badge badge-red"><i class="fa-solid fa-xmark"></i> INVALID</span>
+      {% endif %}
     </div>
-    {% endif %}
+    <h3>Encrypted Storage Simulation</h3>
+    <div style="font-family:var(--mono);font-size:.75rem;display:flex;flex-direction:column;gap:.4rem;">
+      <div><span style="color:var(--text-dim);">Masked:   </span><code>{{ result.masked_card }}</code></div>
+      <div><span style="color:var(--text-dim);">AES Key:  </span><code style="word-break:break-all;">{{ result.aes_key }}</code></div>
+      <div><span style="color:var(--text-dim);">Encrypted:</span><code style="word-break:break-all;">{{ result.encrypted_blob }}</code></div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

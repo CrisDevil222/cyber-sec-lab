@@ -1,58 +1,50 @@
 {% extends "base.html" %}
-
-{% block title %}Đăng Ký Tài Khoản{% endblock %}
-
+{% block title %}Đăng Ký — Cyber Security Lab{% endblock %}
 {% block content %}
-<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
-    
-    <div style="width: 450px; padding: 40px; background: rgba(0, 0, 0, 0.75); border-radius: 15px; border: 1px solid #00d2ff; box-shadow: 0 0 25px rgba(0, 210, 255, 0.2); backdrop-filter: blur(10px);">
-        
-        <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;">
-            <i class="fa-solid fa-user-plus"></i> Đăng Ký
-        </h2>
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:460px;">
+    <h2 class="auth-title"><i class="fa-solid fa-user-plus"></i> Tạo Tài Khoản</h2>
 
-        <form method="POST" action="">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            
-            <div style="margin-bottom: 20px;">
-                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Email xác thực</label>
-                <div style="position: relative;">
-                    <i class="fa-solid fa-envelope" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
-                    <input type="email" name="email" placeholder="Nhập email của bạn..." required 
-                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
-                </div>
-            </div>
+    <form method="POST" style="display:flex;flex-direction:column;gap:.2rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-            <div style="margin-bottom: 20px;">
-                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Tên đăng nhập</label>
-                <div style="position: relative;">
-                    <i class="fa-solid fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
-                    <input type="text" name="username" placeholder="Chọn tên đăng nhập..." required 
-                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
-                </div>
-            </div>
+      <label>Email xác thực</label>
+      <div class="input-group">
+        <i class="fa-solid fa-envelope prefix"></i>
+        <input type="email" name="email" placeholder="your@email.com" required>
+      </div>
 
-            <div style="margin-bottom: 30px;">
-                <label style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px; display: block;">Mật khẩu</label>
-                <div style="position: relative;">
-                     <i class="fa-solid fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #00d2ff;"></i>
-                    <input type="password" name="password" placeholder="Nhập mật khẩu..." required 
-                           style="width: 100%; padding: 12px 12px 12px 45px; background: #222; border: 1px solid #444; color: white; border-radius: 6px; outline: none;">
-                </div>
-            </div>
+      <label>Tên đăng nhập</label>
+      <div class="input-group">
+        <i class="fa-solid fa-user prefix"></i>
+        <input type="text" name="username" placeholder="Chọn username..." required>
+      </div>
 
-            <button type="submit" style="width: 100%; padding: 12px; background: linear-gradient(45deg, #00d2ff, #007bff); color: white; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);">
-                Tạo Tài Khoản
-            </button>
+      <label>Mật khẩu</label>
+      <div class="input-group has-suffix">
+        <i class="fa-solid fa-lock prefix"></i>
+        <input type="password" name="password" id="regPass" placeholder="Tối thiểu 8 ký tự..." required>
+        <i class="fa-solid fa-eye suffix" id="regEye" onclick="toggleReg()"></i>
+      </div>
 
-        </form>
+      <button type="submit" style="width:100%;margin-top:1.2rem;">
+        <i class="fa-solid fa-check-circle"></i> Tạo Tài Khoản
+      </button>
+    </form>
 
-        <div style="margin-top: 25px; text-align: center; border-top: 1px solid #333; padding-top: 20px;">
-            <p style="color: #777; font-size: 0.9rem;">
-                Đã có tài khoản? <a href="{{ url_for('login') }}" style="color: #00d2ff; text-decoration: none; font-weight: bold;">Đăng nhập ngay</a>
-            </p>
-        </div>
-
-    </div>
+    <hr class="sep">
+    <p style="text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--text-dim);">
+      Đã có tài khoản?
+      <a href="{{ url_for('login') }}" style="color:var(--c);text-decoration:none;font-weight:500;">Đăng nhập →</a>
+    </p>
+  </div>
 </div>
+<script>
+function toggleReg() {
+  const x = document.getElementById("regPass"), i = document.getElementById("regEye");
+  const show = x.type === "password";
+  x.type = show ? "text" : "password";
+  i.className = show ? "fa-solid fa-eye-slash suffix" : "fa-solid fa-eye suffix";
+}
+</script>
 {% endblock %}

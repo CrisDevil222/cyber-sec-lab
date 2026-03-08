@@ -1,96 +1,45 @@
 {% extends "base.html" %}
-
-{% block title %}Về Dự Án - CyberSec Lab{% endblock %}
-
+{% block title %}Về Dự Án — Cyber Security Lab{% endblock %}
 {% block content %}
-<div style="max-width: 1000px; margin: 40px auto; padding: 40px; background: rgba(0, 0, 0, 0.7); border-radius: 15px; border: 1px solid #333; box-shadow: 0 0 25px rgba(0, 210, 255, 0.15); color: #e0e0e0;">
-    
-    <div style="text-align: center; margin-bottom: 50px;">
-        <h1 style="color: #00d2ff; font-size: 2.8rem; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px #00d2ff;">
-            <i class="fa-solid fa-shield-virus"></i> Cyber Security Lab
-        </h1>
-        <p style="font-size: 1.2rem; color: #aaa; margin-top: 10px;">
-            Nền tảng thực hành & Công cụ An toàn thông tin "All-in-One".
-        </p>
-    </div>
 
-    <h3 style="color: #00C851; border-left: 5px solid #00C851; padding-left: 15px; margin-bottom: 25px;">
-        🚀 Hệ Thống Tính Năng
-    </h3>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 50px;">
-        
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444; transition: 0.3s; hover: {transform: translateY(-5px);}">
-            <h4 style="color: #ffbb33; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-image"></i> Steganography (Giấu tin)
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Công cụ giấu thông điệp bí mật vào trong các pixel của ảnh (LSB).
-                <br>✅ <strong>Điểm nổi bật:</strong> Hỗ trợ mã hóa Base64 giúp giấu được Tiếng Việt có dấu mà không bị lỗi font.
-            </p>
-        </div>
+<div class="tool-box" style="text-align:center;padding:2rem;">
+  <div style="font-family:var(--mono);font-size:.68rem;letter-spacing:.25em;color:var(--text-dim);margin-bottom:.8rem;">// PROJECT OVERVIEW</div>
+  <h1 style="font-family:var(--display);font-size:2.2rem;font-weight:800;color:var(--c);text-shadow:0 0 30px var(--c-glow);margin-bottom:.5rem;">
+    <i class="fa-solid fa-shield-virus"></i> Cyber Security Lab
+  </h1>
+  <p style="font-family:var(--mono);font-size:.85rem;color:var(--text-dim);">Nền tảng thực hành & Công cụ An toàn thông tin "All-in-One".</p>
+</div>
 
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444;">
-            <h4 style="color: #ff4444; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-map-location-dot"></i> Truy vết Ảnh (OSINT)
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Phân tích Metadata (Exif) từ ảnh gốc.
-                <br>✅ <strong>Điểm nổi bật:</strong> Tự động trích xuất toạ độ GPS và hiển thị vị trí chụp ảnh chính xác ngay trên Google Maps.
-            </p>
-        </div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.2rem;margin-bottom:1.5rem;">
 
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444;">
-            <h4 style="color: #33b5e5; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-user-shield"></i> Kiểm tra Lộ lọt Pass
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Kiểm tra xem mật khẩu của bạn đã từng bị Hacker công khai chưa.
-                <br>✅ <strong>Điểm nổi bật:</strong> Sử dụng API <em>Have I Been Pwned</em> chuẩn k-Anonymity (chỉ gửi 5 ký tự đầu của mã băm SHA-1) đảm bảo an toàn tuyệt đối.
-            </p>
-        </div>
+  {% set features = [
+    ('#00ff88','fa-image','Steganography (LSB)','Giấu thông điệp vào pixel ảnh. Hỗ trợ UTF-8/Tiếng Việt qua mã hóa Base64.'),
+    ('var(--c2)','fa-map-location-dot','OSINT — Truy vết Ảnh','Phân tích metadata EXIF, tự động trích xuất tọa độ GPS và hiển thị trên Google Maps.'),
+    ('var(--c)','fa-user-shield','Kiểm tra Lộ lọt Pass','API Have I Been Pwned với chuẩn k-Anonymity — chỉ gửi 5 ký tự đầu SHA-1.'),
+    ('#aa66ff','fa-file-code','Cryptography','Tạo cặp khóa RSA, mã hóa, tạo chữ ký số HMAC, kiểm tra toàn vẹn file.'),
+    ('var(--c3)','fa-comments','Hệ thống Feedback','Người dùng gửi góp ý → lưu DB → Admin xét duyệt tại trang quản trị riêng.'),
+    ('var(--c4)','fa-screwdriver-wrench','RBAC — Phân quyền','Role-based Access Control: bảo vệ route nhạy cảm, chống Mass Assignment.')
+  ] %}
 
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444;">
-            <h4 style="color: #aa66cc; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-file-code"></i> Cryptography (Mã hóa)
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Bộ công cụ học tập về mã hóa hiện đại.
-                <br>✅ <strong>Tính năng:</strong> Tạo cặp khóa RSA, mã hóa văn bản, tạo chữ ký số (HMAC) và kiểm tra tính toàn vẹn của file.
-            </p>
-        </div>
-
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444;">
-            <h4 style="color: #00C851; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-comments"></i> Hệ thống Feedback
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Kênh giao tiếp trực tiếp giữa người dùng và Admin.
-                <br>✅ <strong>Quy trình:</strong> Người dùng gửi góp ý tại Dashboard -> Hệ thống lưu vào Database -> Admin xem xét tại trang quản trị riêng.
-            </p>
-        </div>
-
-        <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border: 1px solid #444;">
-            <h4 style="color: #ffbb33; font-size: 1.3rem; margin-bottom: 10px;">
-                <i class="fa-solid fa-screwdriver-wrench"></i> Quản trị & Bảo mật
-            </h4>
-            <p style="color: #ccc; line-height: 1.6;">
-                Hệ thống phân quyền (Role-based Access Control).
-                <br>✅ <strong>Tính năng:</strong> Bảo vệ các route nhạy cảm, chống tấn công Mass Assignment, quản lý người dùng tập trung.
-            </p>
-        </div>
-    </div>
-
-    <div style="border-top: 1px solid #444; padding-top: 30px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;">
-        <div>
-            <h4 style="color: #00d2ff; margin-bottom: 5px;">👨‍💻 Nhà Phát Triển: Unknown</h4>
-        </div>
-        <div>
-            <a href="https://github.com/CrisDevil222/cyber-sec-lab" target="_blank" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px; border: 1px solid #555; font-weight: bold; transition: 0.3s;">
-                <i class="fa-brands fa-github"></i> Xem GitHub
-            </a>
-        </div>
-    </div>
+  {% for color, icon, title, desc in features %}
+  <div class="tool-box" style="margin-bottom:0;padding:1.5rem;border-color:rgba(255,255,255,.06);">
+    <h2 style="color:{{ color }};font-size:1rem;">
+      <i class="fa-solid {{ icon }}"></i> {{ title }}
+    </h2>
+    <p style="font-size:.84rem;line-height:1.65;">{{ desc }}</p>
+  </div>
+  {% endfor %}
 
 </div>
+
+<div class="tool-box" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;">
+  <div>
+    <span class="badge badge-cyan">Developer</span>
+    <span style="font-family:var(--display);font-size:1.1rem;font-weight:700;color:#fff;margin-left:.8rem;">Unknown</span>
+  </div>
+  <a href="https://github.com/CrisDevil222/cyber-sec-lab" target="_blank" class="btn btn-ghost" style="font-size:.8rem;">
+    <i class="fa-brands fa-github"></i> Xem GitHub
+  </a>
+</div>
+
 {% endblock %}

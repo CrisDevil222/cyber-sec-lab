@@ -1,82 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Threat Intelligence{% endblock %}
-
 {% block content %}
-<div class="tool-box" style="max-width: 800px; margin: 0 auto;">
-    <h2 style="color: var(--primary-color); text-align: center;">
-        <i class="fa-solid fa-globe"></i> IP Threat Intelligence
-    </h2>
-    <p style="text-align: center; color: #aaa;">Kiểm tra độ uy tín của địa chỉ IP qua cơ sở dữ liệu toàn cầu.</p>
+<div class="tool-box">
+  <h2 style="color:var(--c4);"><i class="fa-solid fa-globe"></i> Threat Intelligence — IP Lookup</h2>
+  <p>Tra cứu độ tin cậy và lịch sử lạm dụng của địa chỉ IP qua <strong>AbuseIPDB</strong>.</p>
 
-    <form method="POST" style="margin-top: 30px;">
-        <div style="display: flex; gap: 10px;">
-            <input type="text" name="ip_address" placeholder="Nhập địa chỉ IP (VD: 118.69.132.12)" required 
-                   style="font-size: 1.2rem; text-align: center; letter-spacing: 1px;">
-            <button type="submit" style="width: 150px;">
-                <i class="fa-solid fa-magnifying-glass"></i> SCAN
-            </button>
-        </div>
-    </form>
-
-    {% if data %}
-    <div class="result-box" style="margin-top: 40px; animation: fadeIn 0.5s;">
-        <h3 style="border-bottom: 1px solid #444; padding-bottom: 10px;">Kết quả phân tích: <span style="color: #fff;">{{ data.ipAddress }}</span></h3>
-        
-        <div style="margin: 20px 0;">
-            <label>Mức độ độc hại (Risk Score): <strong style="font-size: 1.2rem;">{{ data.abuseConfidenceScore }}%</strong></label>
-            
-            <div style="background: #333; height: 25px; border-radius: 15px; overflow: hidden; margin-top: 5px; border: 1px solid #555;">
-                
-                {% set bar_color = '#00C851' %}
-                {% if data.abuseConfidenceScore > 50 %}
-                    {% set bar_color = '#ff4444' %}
-                {% elif data.abuseConfidenceScore > 20 %}
-                    {% set bar_color = '#ffbb33' %}
-                {% endif %}
-
-                <div style="height: 100%; width: {{ data.abuseConfidenceScore }}%; 
-                            background-color: {{ bar_color }};
-                            transition: width 1s ease-in-out;">
-                </div>
-            </div>
-
-            <p style="font-size: 0.8rem; margin-top: 5px;">
-                {% if data.abuseConfidenceScore == 0 %}
-                    <span style="color: #00C851;"><i class="fa-solid fa-check-circle"></i> IP Sạch (Clean)</span>
-                {% elif data.abuseConfidenceScore > 50 %}
-                    <span style="color: #ff4444;"><i class="fa-solid fa-triangle-exclamation"></i> CỰC KỲ NGUY HIỂM</span>
-                {% else %}
-                    <span style="color: #ffbb33;"><i class="fa-solid fa-exclamation-circle"></i> Đáng ngờ</span>
-                {% endif %}
-            </p>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px;">
-            <div>
-                <p><strong><i class="fa-solid fa-network-wired"></i> Nhà mạng (ISP):</strong><br> {{ data.isp }}</p>
-                <p><strong><i class="fa-solid fa-server"></i> Domain:</strong><br> {{ data.domain }}</p>
-            </div>
-            <div>
-                <p><strong><i class="fa-solid fa-earth-americas"></i> Quốc gia:</strong><br> {{ data.countryCode }}</p>
-                <p><strong><i class="fa-solid fa-clock-rotate-left"></i> Báo cáo lần cuối:</strong><br> {{ data.lastReportedAt or 'Chưa từng bị báo cáo' }}</p>
-            </div>
-        </div>
-
-        <div style="margin-top: 20px; text-align: center;">
-            <p><strong>Tổng số lần bị báo cáo:</strong> {{ data.totalReports }} lần.</p>
-        </div>
+  <form method="POST" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <label>Địa chỉ IP cần tra cứu</label>
+    <div style="display:flex;gap:.8rem;">
+      <input type="text" name="ip_address" placeholder="8.8.8.8" required style="flex:1;">
+      <button type="submit" style="flex-shrink:0;background:linear-gradient(135deg,var(--c4),#cc8800);color:#06080b;">
+        <i class="fa-solid fa-magnifying-glass"></i> Tra cứu
+      </button>
     </div>
-    {% endif %}  {% if error %}
-    <div class="alert alert-danger" style="margin-top: 20px; color: #ff4444; text-align: center;">
-        <i class="fa-solid fa-circle-xmark"></i> {{ error }}
+  </form>
+
+  {% if error %}
+  <div class="alert alert-danger" style="margin-top:1rem;"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</div>
+  {% endif %}
+
+  {% if data %}
+  <div class="result-box">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <div style="font-family:var(--mono);font-size:1.2rem;color:var(--c);">{{ data.ipAddress }}</div>
+      <span class="badge {% if data.abuseConfidenceScore > 50 %}badge-red{% elif data.abuseConfidenceScore > 20 %}badge-yellow{% else %}badge-green{% endif %}">
+        Risk: {{ data.abuseConfidenceScore }}%
+      </span>
     </div>
-    {% endif %}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;font-family:var(--mono);font-size:.78rem;">
+      {% for label, val in [
+        ('Country', data.countryCode),
+        ('ISP', data.isp),
+        ('Domain', data.domain or 'N/A'),
+        ('Total Reports', data.totalReports),
+        ('Last Reported', data.lastReportedAt or 'Never'),
+        ('Usage Type', data.usageType or 'Unknown')
+      ] %}
+      <div style="background:rgba(0,0,0,.3);padding:.7rem;border-radius:var(--radius);border:1px solid var(--border2);">
+        <div style="color:var(--text-dim);font-size:.65rem;letter-spacing:.1em;margin-bottom:.3rem;">{{ label|upper }}</div>
+        <div style="color:var(--text);">{{ val }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
-
-<style>
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>
 {% endblock %}

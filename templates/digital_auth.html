@@ -1,32 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Digital Auth (2FA){% endblock %}
+{% block title %}2FA Authenticator{% endblock %}
 {% block content %}
 <div class="tool-box">
-    <h2 style="color: var(--accent-color);"><i class="fa-solid fa-mobile-screen-button"></i> 2FA Authenticator (TOTP)</h2>
-    <p>Hệ thống mô phỏng xác thực 2 bước thời gian thực (Giống Google Authenticator).</p>
+  <h2><i class="fa-solid fa-mobile-screen-button"></i> 2FA — TOTP Authenticator</h2>
+  <p>Mô phỏng xác thực 2 bước thời gian thực (giống Google Authenticator).</p>
 
-    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <h4>Your Secret Key:</h4>
-        <code style="font-size: 1.2rem; color: #ff9900;">{{ secret }}</code>
-        <p style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">(Trong thực tế, mã này được quét bằng QR Code)</p>
-        
-        <h4 style="margin-top: 20px;">Current Code (Server Time):</h4>
-        <h1 style="color: var(--accent-color); letter-spacing: 5px;">{{ current_code }}</h1>
-        <p style="font-size: 0.8rem;">Code này thay đổi mỗi 30 giây.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:1.5rem;">
+    <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
+      <h3 style="margin-top:0;">Secret Key</h3>
+      <code style="font-size:1rem;display:block;padding:.8rem;margin:.5rem 0;word-break:break-all;">{{ secret }}</code>
+      <p style="font-family:var(--mono);font-size:.72rem;color:var(--text-dim);">Trong thực tế, mã này được scan bằng QR Code.</p>
     </div>
+    <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;">
+      <h3 style="margin-top:0;">Current OTP</h3>
+      <div style="font-family:var(--mono);font-size:2.5rem;letter-spacing:.3em;color:var(--c);text-shadow:0 0 20px var(--c-glow);margin:.5rem 0;">{{ current_code }}</div>
+      <p style="font-family:var(--mono);font-size:.72rem;color:var(--text-dim);">Thay đổi mỗi 30 giây</p>
+    </div>
+  </div>
 
-    <form method="POST">
-        <label>Verify OTP Code:</label>
-        <div style="display: flex; gap: 10px;">
-            <input type="text" name="otp_code" placeholder="Nhập 6 số..." maxlength="6" required>
-            <button type="submit">Verify</button>
-        </div>
-    </form>
+  <form method="POST" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <label>Nhập OTP Code để xác minh</label>
+    <div style="display:flex;gap:.8rem;">
+      <input type="text" name="otp_code" placeholder="6 chữ số..." maxlength="6" required style="flex:1;letter-spacing:.3em;font-size:1.2rem;text-align:center;">
+      <button type="submit" style="flex-shrink:0;"><i class="fa-solid fa-check"></i> Verify</button>
+    </div>
+  </form>
 
-    {% if status == 'SUCCESS' %}
-        <div class="alert alert-success" style="margin-top: 20px;">✅ Xác thực thành công! Code hợp lệ.</div>
-    {% elif status == 'FAILED' %}
-        <div class="alert alert-danger" style="margin-top: 20px;">❌ Xác thực thất bại! Code sai hoặc hết hạn.</div>
-    {% endif %}
+  {% if status == 'SUCCESS' %}
+    <div class="alert alert-success"><i class="fa-solid fa-check-circle"></i> Xác thực thành công! Code hợp lệ.</div>
+  {% elif status == 'FAILED' %}
+    <div class="alert alert-danger"><i class="fa-solid fa-xmark-circle"></i> Xác thực thất bại — code sai hoặc hết hạn.</div>
+  {% endif %}
 </div>
 {% endblock %}

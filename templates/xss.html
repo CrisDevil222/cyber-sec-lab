@@ -1,32 +1,41 @@
 {% extends "base.html" %}
 {% block title %}XSS Lab{% endblock %}
 {% block content %}
-<div class="tool-box">
-    <h2 style="color: #ffcc00;"><i class="fa-solid fa-code"></i> Cross-Site Scripting (XSS)</h2>
-    <p>Thử nhập: <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> hoặc <code>&lt;img src=x onerror=alert('Hacked')&gt;</code></p>
-    
-    <form method="POST">
-        <label>Payload:</label>
-        <input type="text" name="payload" value="<script>alert('XSS')</script>">
-        <select name="mode" style="background:#333; color:white; padding:10px; width:100%; margin:10px 0;">
-            <option value="safe">Safe Mode (Sanitized)</option>
-            <option value="unsafe">Unsafe Mode (Vulnerable)</option>
-        </select>
-        <button type="submit">Execute</button>
-    </form>
+<div class="tool-box" style="border-color:rgba(255,204,0,.25);">
+  <h2 style="color:var(--c4);"><i class="fa-solid fa-code"></i> Cross-Site Scripting (XSS)</h2>
+  <p>Thử nhập: <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> hoặc <code>&lt;img src=x onerror=alert('XSS')&gt;</code> để kiểm tra sự khác biệt giữa Safe và Unsafe mode.</p>
 
-    <div style="margin-top:20px; border:1px dashed #555; padding:15px;">
-        <h3>Kết quả hiển thị:</h3>
-        
-        {% if safe %}
-            <p><strong>Safe Mode:</strong> Server đã mã hóa ký tự đặc biệt:</p>
-            <div style="background:#222; padding:10px;">{{ safe }}</div>
-        {% endif %}
+  <form method="POST" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <label>Payload</label>
+    <input type="text" name="payload" value="<script>alert('XSS')</script>">
+    <label>Mode</label>
+    <select name="mode">
+      <option value="safe">Safe Mode — Đã sanitize (An toàn)</option>
+      <option value="unsafe">Unsafe Mode — Dễ bị tấn công ⚠️</option>
+    </select>
+    <button type="submit" style="margin-top:1rem;">
+      <i class="fa-solid fa-play"></i> Execute
+    </button>
+  </form>
 
-        {% if unsafe %}
-            <p><strong>Unsafe Mode:</strong> Trình duyệt sẽ chạy code này:</p>
-            <div style="background:#222; padding:10px;">{{ unsafe | safe }}</div>
-        {% endif %}
-    </div>
+  {% if safe or unsafe %}
+  <div class="result-box" style="margin-top:1.5rem;">
+    {% if safe %}
+      <div style="margin-bottom:1rem;">
+        <span class="badge badge-green" style="margin-bottom:.6rem;">SAFE MODE</span>
+        <p style="font-family:var(--mono);font-size:.8rem;color:var(--text-dim);margin-bottom:.5rem;">Server đã escape HTML — code không chạy được:</p>
+        <pre style="color:var(--c3);">{{ safe }}</pre>
+      </div>
+    {% endif %}
+    {% if unsafe %}
+      <div>
+        <span class="badge badge-red" style="margin-bottom:.6rem;">UNSAFE MODE — VULNERABLE</span>
+        <p style="font-family:var(--mono);font-size:.8rem;color:var(--text-dim);margin-bottom:.5rem;">Trình duyệt sẽ chạy trực tiếp:</p>
+        <div style="background:rgba(255,45,85,.05);border:1px solid rgba(255,45,85,.2);padding:1rem;border-radius:var(--radius);">{{ unsafe | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -1,25 +1,24 @@
 {% extends "base.html" %}
-
-{% block title %}Công cụ HMAC{% endblock %}
-
+{% block title %}HMAC Tool{% endblock %}
 {% block content %}
-<h2>HMAC Calculator (SHA-256)</h2>
 <div class="tool-box">
-    <form method="POST">
-        <label>Input Data:</label>
-        <input type="text" name="data" required placeholder="Nhập dữ liệu...">
-        
-        <label>Secret Key:</label>
-        <input type="text" name="key" required placeholder="Nhập khóa bí mật...">
-        
-        <button type="submit">Hash!</button>
-    </form>
+  <h2><i class="fa-solid fa-key"></i> HMAC-SHA256 Generator</h2>
+  <p>Tạo chữ ký số HMAC-SHA256 để xác minh tính toàn vẹn và xác thực nguồn gốc dữ liệu.</p>
 
-    {% if result %}
-    <div class="result-box">
-        <h3>Kết quả:</h3>
-        <code>{{ result }}</code>
-    </div>
-    {% endif %}
+  <form method="POST" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <label>Secret Key</label>
+    <input type="text" name="key" placeholder="Nhập khóa bí mật..." required>
+    <label>Data / Message</label>
+    <textarea name="data" placeholder="Nhập dữ liệu cần ký..." required rows="3"></textarea>
+    <button type="submit" style="margin-top:1rem;"><i class="fa-solid fa-signature"></i> Generate HMAC</button>
+  </form>
+
+  {% if result %}
+  <div class="result-box">
+    <h3>HMAC-SHA256 Signature</h3>
+    <code style="display:block;padding:1rem;word-break:break-all;font-size:.82rem;background:rgba(0,0,0,.4);border-radius:var(--radius);margin-top:.5rem;color:var(--c3);">{{ result }}</code>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

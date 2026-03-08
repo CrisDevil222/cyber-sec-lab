@@ -1,89 +1,67 @@
 {% extends "base.html" %}
-{% block title %}Kỹ thuật Giấu Tin (Steganography){% endblock %}
-
+{% block title %}Steganography Lab{% endblock %}
 {% block content %}
-<div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-    <h2 style="text-align: center; color: #00d2ff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">
-        <i class="fa-solid fa-user-secret"></i> Lab: Steganography
-    </h2>
 
-    {% if error %}
-    <div style="background: rgba(255, 0, 0, 0.2); border-left: 4px solid #ff4444; padding: 15px; margin-bottom: 20px; color: #ff4444; border-radius: 4px;">
-        <i class="fa-solid fa-triangle-exclamation"></i> Lỗi: {{ error }}
+<div class="tool-box" style="text-align:center;padding:1.2rem 2rem 1rem;">
+  <h2 style="justify-content:center;"><i class="fa-solid fa-user-secret"></i> Steganography Lab</h2>
+  <p style="font-family:var(--mono);font-size:.8rem;color:var(--text-dim);">Giấu & trích xuất thông điệp bí mật từ ảnh bằng kỹ thuật LSB.</p>
+</div>
+
+{% if error %}
+<div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:0;">
+
+  <!-- DECODE -->
+  <div class="tool-box" style="border-color:rgba(0,229,255,.25);margin-bottom:0;">
+    <h2><i class="fa-solid fa-unlock-keyhole"></i> Trích Xuất</h2>
+    <p style="font-size:.85rem;color:var(--text-dim);">Tải lên ảnh nghi ngờ có thông điệp ẩn để giải mã.</p>
+    <form method="POST" enctype="multipart/form-data" style="margin-top:1rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="action" value="decode">
+      <label>Chọn ảnh (PNG/JPG)</label>
+      <input type="file" name="stego_image" required accept="image/png,image/jpeg">
+      <button type="submit" style="width:100%;margin-top:1rem;">
+        <i class="fa-solid fa-magnifying-glass"></i> Phân Tích & Giải Mã
+      </button>
+    </form>
+    {% if revealed_message %}
+    <div class="alert alert-success" style="margin-top:1rem;word-break:break-all;">
+      <strong>Thông điệp tìm thấy:</strong><br>
+      <span style="font-family:var(--mono);font-size:.9rem;">{{ revealed_message }}</span>
     </div>
     {% endif %}
+  </div>
 
-    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
-        
-        <div style="flex: 1; min-width: 300px; background: rgba(0,0,0,0.7); border: 1px solid #00d2ff; border-radius: 10px; padding: 25px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
-            <h3 style="color: #00d2ff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">
-                <i class="fa-solid fa-unlock-keyhole"></i> Trích Xuất Thông Điệp
-            </h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Tải lên một bức ảnh nghi ngờ có chứa thông điệp ẩn để giải mã.</p>
-            
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                
-                <input type="hidden" name="action" value="decode">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="color: #ccc; display: block; margin-bottom: 8px;">Chọn ảnh (PNG):</label>
-                    <input type="file" name="image" required accept="image/png, image/jpeg"
-                           style="width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; border-radius: 5px; cursor: pointer;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #00d2ff; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; text-transform: uppercase;">
-                    <i class="fa-solid fa-magnifying-glass"></i> Phân Tích & Giải Mã
-                </button>
-            </form>
-
-            {% if revealed_message %}
-            <div style="margin-top: 25px; padding: 15px; background: rgba(0, 255, 0, 0.1); border: 1px solid #00ff00; border-radius: 5px;">
-                <h4 style="color: #00ff00; margin-bottom: 10px;"><i class="fa-solid fa-check"></i> Thông điệp tìm thấy:</h4>
-                <p style="color: white; word-wrap: break-word; font-family: monospace; font-size: 1.1rem; margin: 0;">{{ revealed_message }}</p>
-            </div>
-            {% endif %}
-        </div>
-
-        <div style="flex: 1; min-width: 300px; background: rgba(0,0,0,0.7); border: 1px solid #ff007f; border-radius: 10px; padding: 25px; box-shadow: 0 0 15px rgba(255, 0, 127, 0.1);">
-            <h3 style="color: #ff007f; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">
-                <i class="fa-solid fa-file-shield"></i> Nhúng Thông Điệp
-            </h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Tải lên ảnh gốc và nhập thông điệp bí mật để giấu vào ảnh.</p>
-
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                
-                <input type="hidden" name="action" value="encode">
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="color: #ccc; display: block; margin-bottom: 8px;">Chọn ảnh gốc:</label>
-                    <input type="file" name="image" required accept="image/png, image/jpeg"
-                           style="width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; border-radius: 5px; cursor: pointer;">
-                </div>
-
-                <div style="margin-bottom: 20px;">
-                    <label style="color: #ccc; display: block; margin-bottom: 8px;">Thông điệp bí mật:</label>
-                    <input type="text" name="secret_message" required placeholder="Nhập văn bản cần giấu..."
-                           style="width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; border-radius: 5px; outline: none;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #ff007f; color: #fff; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; text-transform: uppercase;">
-                    <i class="fa-solid fa-eye-slash"></i> Giấu Tin Vào Ảnh
-                </button>
-            </form>
-
-            {% if hidden_img_url %}
-            <div style="margin-top: 25px; padding: 15px; background: rgba(255, 0, 127, 0.1); border: 1px solid #ff007f; border-radius: 5px; text-align: center;">
-                <h4 style="color: #ff007f; margin-bottom: 15px;"><i class="fa-solid fa-circle-check"></i> Đã xử lý ảnh thành công!</h4>
-                <a href="{{ hidden_img_url }}" download 
-                   style="display: inline-block; padding: 10px 20px; background: #ff007f; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;">
-                    <i class="fa-solid fa-download"></i> Tải ảnh đã giấu tin
-                </a>
-            </div>
-            {% endif %}
-        </div>
-
+  <!-- ENCODE -->
+  <div class="tool-box" style="border-color:rgba(255,45,85,.2);margin-bottom:0;">
+    <h2 style="color:var(--c2);"><i class="fa-solid fa-file-shield"></i> Nhúng Tin</h2>
+    <p style="font-size:.85rem;color:var(--text-dim);">Giấu thông điệp bí mật vào trong ảnh gốc.</p>
+    <form method="POST" enctype="multipart/form-data" style="margin-top:1rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="action" value="encode">
+      <label>Chọn ảnh gốc</label>
+      <input type="file" name="image" required accept="image/png,image/jpeg">
+      <label>Thông điệp bí mật</label>
+      <input type="text" name="message" required placeholder="Nhập văn bản cần giấu...">
+      <button type="submit" class="btn-danger" style="width:100%;margin-top:1rem;">
+        <i class="fa-solid fa-eye-slash"></i> Giấu Tin Vào Ảnh
+      </button>
+    </form>
+    {% if hidden_img_url %}
+    <div class="alert alert-success" style="margin-top:1rem;text-align:center;">
+      <i class="fa-solid fa-circle-check"></i> Xử lý thành công!<br>
+      <a href="{{ hidden_img_url }}" download style="color:var(--c3);font-family:var(--mono);font-size:.8rem;">
+        <i class="fa-solid fa-download"></i> Tải ảnh đã giấu tin
+      </a>
     </div>
+    {% endif %}
+  </div>
+
 </div>
+
+@media(max-width:700px){
+  div[style*="grid-template-columns:1fr 1fr"]{ grid-template-columns:1fr !important; }
+}
 {% endblock %}

@@ -531,6 +531,87 @@ def pentest_blue():
     c = AuditLog.query.filter(AuditLog.action.contains('Attack')).count()
     return render_template('pentest_blue.html', logs=l, stats={'total':AuditLog.query.count(),'attacks':c})
 
+# ============================================================
+# THAY THẾ 2 ROUTE CŨ TRONG app.py BẰNG CÁC ROUTE NÀY
+# ============================================================
+
+# ── BLUE TEAM (dữ liệu thật từ DB) ──────────────────────────
+@app.route('/blue_team')
+@login_required
+def blue_team():
+    # Log feed: 30 sự kiện mới nhất
+    logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(30).all()
+
+    # Metrics thật
+    total_logs   = AuditLog.query.count()
+    attack_count = AuditLog.query.filter(
+        AuditLog.action.contains('Attack') |
+        AuditLog.action.contains('SQLi')   |
+        AuditLog.action.contains('XSS')    |
+        AuditLog.action.contains('RCE')    |
+        AuditLog.action.contains('Detected')
+    ).count()
+    solve_count  = AuditLog.query.filter(AuditLog.action.contains('Solved')).count()
+    user_count   = User.query.count()
+
+    # Top scorer
+    top = User.query.order_by(User.score.desc()).first()
+    top_user = f"{top.username} ({top.score}pt)" if top else "N/A"
+
+    stats = {
+        'total':    total_logs,
+        'attacks':  attack_count,
+        'solves':   solve_count,
+        'users':    user_count,
+        'top_user': top_user,
+    }
+
+    return render_template('blue_team.html', logs=logs, stats=stats)
+
+
+# ── RED TEAM (dữ liệu thật từ DB) ───────────────────────────
+@app.route('/red_team')
+@login_required
+def red_team():
+    # Lấy 10 log SQLi/Attack gần nhất để hiển thị trong terminal
+    attack_logs = AuditLog.query.filter(
+        AuditLog.action.contains('Attack') |
+        AuditLog.action.contains('SQLi')   |
+        AuditLog.action.contains('XSS')    |
+        AuditLog.action.contains('RCE')    |
+        AuditLog.action.contains('Detected')
+    ).order_by(AuditLog.timestamp.desc()).limit(10).all()
+
+    # Metrics cho Attack Surface
+    total_logs    = AuditLog.query.count()
+    attack_count  = AuditLog.query.filter(
+        AuditLog.action.contains('Attack') |
+        AuditLog.action.contains('Detected')
+    ).count()
+    sqli_count    = AuditLog.query.filter(AuditLog.action.contains('SQLi')).count()
+    xss_count     = AuditLog.query.filter(AuditLog.action.contains('XSS')).count()
+    rce_count     = AuditLog.query.filter(AuditLog.action.contains('RCE')).count()
+    phishing_count= AuditLog.query.filter(AuditLog.action.contains('Phishing')).count()
+    user_count    = User.query.count()
+
+    # Tính % cho gauges (clamp 0-100)
+    def pct(a, b):
+        return min(int((a / max(b, 1)) * 100), 100)
+
+    metrics = {
+        'web_exposure':   min(sqli_count * 20 + xss_count * 15, 100),
+        'network_risk':   min(rce_count * 25 + attack_count * 5, 100),
+        'social_eng':     min(phishing_count * 20, 100),
+        'credential':     min(attack_count * 8, 100),
+        'patch_score':    max(100 - attack_count * 10, 0),
+        'total_attacks':  attack_count,
+        'sqli':           sqli_count,
+        'xss':            xss_count,
+        'rce':            rce_count,
+    }
+
+    return render_template('red_team.html', attack_logs=attack_logs, metrics=metrics)
+
 @app.route('/rsa', methods=['GET', 'POST'])
 @login_required
 def rsa_tool(): return render_template('rsa.html')

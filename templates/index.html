@@ -1,17 +1,62 @@
 {% extends "base.html" %}
-{% block title %}Trang chủ - CyberSec{% endblock %}
-
+{% block title %}Trang chủ — Cyber Security Lab{% endblock %}
 {% block content %}
-<div style="text-align: center; padding: 50px;">
-    <h1>Chào mừng đến với CyberSec Hub</h1>
-    <p>Nền tảng thực hành và kiểm thử an ninh mạng toàn diện.</p>
-    <div style="margin-top: 30px;">
-        {% if not current_user.is_authenticated %}
-            <a href="{{ url_for('login') }}"><button style="width: 200px; display: inline-block;">Đăng nhập</button></a>
-            <a href="{{ url_for('register') }}"><button style="width: 200px; display: inline-block; background: transparent; color: #00ff00;">Đăng ký</button></a>
-        {% else %}
-            <a href="{{ url_for('dashboard') }}"><button style="width: 200px; display: inline-block;">Vào Dashboard</button></a>
-        {% endif %}
+
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - var(--nav-h) - 8rem);text-align:center;padding:2rem 1rem;">
+
+  <!-- glitch badge -->
+  <div style="font-family:var(--mono);font-size:.7rem;letter-spacing:.3em;color:var(--c);border:1px solid var(--border);padding:.35rem 1rem;margin-bottom:2rem;text-transform:uppercase;animation:fadeIn .6s ease both;">
+    // AUTHORIZED TRAINING ENVIRONMENT //
+  </div>
+
+  <h1 style="font-family:var(--display);font-size:clamp(2.2rem,6vw,4rem);font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;margin-bottom:1.2rem;animation:fadeIn .6s .1s ease both;">
+    <span style="color:var(--c);text-shadow:0 0 40px var(--c-glow);">Cyber</span><br>
+    <span style="color:#fff;">Security Lab</span>
+  </h1>
+
+  <p style="font-family:var(--mono);font-size:.95rem;color:var(--text-dim);max-width:480px;line-height:1.7;margin-bottom:2.5rem;animation:fadeIn .6s .2s ease both;">
+    Nền tảng thực hành & kiểm thử an ninh mạng toàn diện.<br>
+    Học bằng thực chiến — tấn công, phòng thủ, phân tích.
+  </p>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;animation:fadeIn .6s .3s ease both;">
+    {% if not current_user.is_authenticated %}
+      <a href="{{ url_for('login') }}">
+        <button style="padding:.8rem 2rem;font-size:.9rem;">
+          <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+        </button>
+      </a>
+      <a href="{{ url_for('register') }}">
+        <button class="btn-ghost" style="padding:.8rem 2rem;font-size:.9rem;">
+          <i class="fa-solid fa-user-plus"></i> Đăng ký
+        </button>
+      </a>
+    {% else %}
+      <a href="{{ url_for('dashboard') }}">
+        <button style="padding:.8rem 2rem;font-size:.9rem;">
+          <i class="fa-solid fa-gauge-high"></i> Vào Dashboard
+        </button>
+      </a>
+    {% endif %}
+    <a href="{{ url_for('about') }}">
+      <button class="btn-ghost" style="padding:.8rem 2rem;font-size:.9rem;">
+        <i class="fa-solid fa-circle-info"></i> Tìm hiểu thêm
+      </button>
+    </a>
+  </div>
+
+  <!-- stats row -->
+  <div style="display:flex;gap:3rem;margin-top:4rem;flex-wrap:wrap;justify-content:center;animation:fadeIn .6s .5s ease both;">
+    {% for stat in [('10+','Modules'), ('CTF','Challenges'), ('24/7','Labs Online')] %}
+    <div style="text-align:center;">
+      <div style="font-family:var(--display);font-size:1.8rem;font-weight:800;color:var(--c);text-shadow:0 0 20px var(--c-glow);">{{ stat[0] }}</div>
+      <div style="font-family:var(--mono);font-size:.68rem;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:.2rem;">{{ stat[1] }}</div>
     </div>
-</div>    
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+@keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+</style>
 {% endblock %}

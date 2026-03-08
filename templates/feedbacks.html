@@ -1,46 +1,27 @@
 {% extends "base.html" %}
-
+{% block title %}Feedbacks — Admin{% endblock %}
 {% block content %}
-<div style="max-width: 900px; margin: 50px auto; color: #fff;">
-    <h2 style="text-align: center; color: #00d2ff; margin-bottom: 30px;">
-        <i class="fa-solid fa-inbox"></i> Hòm Thư Góp Ý
-    </h2>
+<div class="tool-box">
+  <h2><i class="fa-solid fa-comments"></i> Góp Ý Người Dùng</h2>
+  <p style="font-family:var(--mono);font-size:.78rem;color:var(--text-dim);">{{ feedbacks|length }} góp ý đã nhận được.</p>
+</div>
 
-    {% if feedbacks %}
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #00d2ff; color: #000;">
-                        <th style="padding: 15px;">Thời gian</th>
-                        <th style="padding: 15px;">Người gửi</th>
-                        <th style="padding: 15px;">Nội dung</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fb in feedbacks %}
-                    <tr style="border-bottom: 1px solid #333;">
-                        <td style="padding: 15px; text-align: center; color: #aaa;">
-                            {{ fb.timestamp.strftime('%H:%M %d/%m/%Y') }}
-                        </td>
-                        <td style="padding: 15px; font-weight: bold; color: #00d2ff;">
-                            {{ fb.name }}
-                        </td>
-                        <td style="padding: 15px;">
-                            {{ fb.content }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p style="text-align: center; color: #777;">Chưa có ý kiến đóng góp nào.</p>
-    {% endif %}
-    
-    <div style="text-align: center; margin-top: 30px;">
-        <a href="{{ url_for('dashboard') }}" style="color: #aaa; text-decoration: none;">
-            <i class="fa-solid fa-arrow-left"></i> Quay lại Dashboard
-        </a>
-    </div>
+<div class="tool-box" style="padding:0;overflow:hidden;">
+  <table>
+    <thead>
+      <tr><th>Thời gian</th><th>Người dùng</th><th>Nội dung</th></tr>
+    </thead>
+    <tbody>
+      {% for fb in feedbacks %}
+      <tr>
+        <td style="color:var(--text-dim);white-space:nowrap;">{{ fb.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td><span class="badge badge-cyan">{{ fb.username }}</span></td>
+        <td>{{ fb.content }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-dim);">// Chưa có góp ý nào</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

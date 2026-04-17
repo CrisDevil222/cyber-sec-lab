@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Giữ lại db để không mất dữ liệu khi restart container
+      - ./instance:/app/instance
+      # Nếu đang dùng file sqlite ở thư mục gốc thì có thể map trực tiếp
+      - ./database.db:/app/database.db
+      - ./uploads_temp:/app/uploads_temp
+      - ./static/stego_uploads:/app/static/stego_uploads
+    env_file:
+      - .env
+    restart: unless-stopped

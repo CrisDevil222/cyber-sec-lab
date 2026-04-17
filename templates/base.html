@@ -30,8 +30,13 @@
       <span>Cyber Security Lab</span>
     </a>
 
+    <!-- Hamburger Button (mobile) -->
+    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
     <!-- Nav -->
-    <ul class="nav-links">
+    <ul class="nav-links" id="navLinks">
       <li><a href="{{ url_for('about') }}"><i class="fa-solid fa-circle-info"></i> Giới thiệu</a></li>
 
       {% if current_user.is_authenticated %}
@@ -53,6 +58,27 @@
     </ul>
   </nav>
 </header>
+
+<script>
+  // Hamburger menu toggle
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const navLinks = document.getElementById('navLinks');
+  if (hamburgerBtn && navLinks) {
+    hamburgerBtn.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('nav-open');
+      hamburgerBtn.classList.toggle('is-open', isOpen);
+      hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    });
+    // Đóng menu khi click vào link
+    navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('nav-open');
+        hamburgerBtn.classList.remove('is-open');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+</script>
 
 <main class="container">
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -97,5 +123,6 @@ particlesJS("particles-js", {
   retina_detect: true
 });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 </body>
 </html>

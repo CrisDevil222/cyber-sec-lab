@@ -1,36 +1,169 @@
 {% extends "base.html" %}
 {% block title %}2FA Authenticator{% endblock %}
 {% block content %}
+
+<!-- QRCode.js library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <div class="tool-box">
   <h2><i class="fa-solid fa-mobile-screen-button"></i> 2FA — TOTP Authenticator</h2>
-  <p>Mô phỏng xác thực 2 bước thời gian thực (giống Google Authenticator).</p>
+  <p>Mô phỏng xác thực 2 bước thời gian thực. Scan QR bằng Google Authenticator hoặc Authy.</p>
+</div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:1.5rem;">
-    <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
-      <h3 style="margin-top:0;">Secret Key</h3>
-      <code style="font-size:1rem;display:block;padding:.8rem;margin:.5rem 0;word-break:break-all;">{{ secret }}</code>
-      <p style="font-family:var(--mono);font-size:.72rem;color:var(--text-dim);">Trong thực tế, mã này được scan bằng QR Code.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;">
+
+  <!-- LEFT: QR + Key -->
+  <div class="tool-box" style="margin-bottom:0;text-align:center;">
+    <h2 style="font-size:.9rem;justify-content:center;"><i class="fa-solid fa-qrcode"></i> Scan QR Code</h2>
+    <p style="font-family:var(--mono);font-size:.75rem;color:var(--text-dim);margin-bottom:1.5rem;">
+      Mở app Authenticator → Thêm tài khoản → Scan QR
+    </p>
+
+    <!-- QR Code container -->
+    <div style="display:flex;justify-content:center;margin-bottom:1.2rem;">
+      <div style="position:relative;padding:12px;background:#fff;border-radius:8px;box-shadow:0 0 30px rgba(0,229,255,.2),0 0 60px rgba(0,229,255,.08);display:inline-block;">
+        <div id="qrcode"></div>
+        <!-- Corner accents overlay -->
+        <div style="position:absolute;top:4px;left:4px;width:16px;height:16px;border-top:2px solid var(--c);border-left:2px solid var(--c);border-radius:1px;"></div>
+        <div style="position:absolute;top:4px;right:4px;width:16px;height:16px;border-top:2px solid var(--c);border-right:2px solid var(--c);border-radius:1px;"></div>
+        <div style="position:absolute;bottom:4px;left:4px;width:16px;height:16px;border-bottom:2px solid var(--c);border-left:2px solid var(--c);border-radius:1px;"></div>
+        <div style="position:absolute;bottom:4px;right:4px;width:16px;height:16px;border-bottom:2px solid var(--c);border-right:2px solid var(--c);border-radius:1px;"></div>
+      </div>
     </div>
-    <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;">
-      <h3 style="margin-top:0;">Current OTP</h3>
-      <div style="font-family:var(--mono);font-size:2.5rem;letter-spacing:.3em;color:var(--c);text-shadow:0 0 20px var(--c-glow);margin:.5rem 0;">{{ current_code }}</div>
-      <p style="font-family:var(--mono);font-size:.72rem;color:var(--text-dim);">Thay đổi mỗi 30 giây</p>
+
+    <!-- App badges -->
+    <div style="display:flex;justify-content:center;gap:.6rem;margin-bottom:1.4rem;flex-wrap:wrap;">
+      <span class="badge badge-cyan"><i class="fa-brands fa-google"></i> Google Authenticator</span>
+      <span class="badge badge-cyan"><i class="fa-solid fa-shield"></i> Authy</span>
+      <span class="badge badge-cyan"><i class="fa-solid fa-key"></i> 1Password</span>
+    </div>
+
+    <!-- Secret Key (hidden by default) -->
+    <div style="border-top:1px solid var(--border2);padding-top:1rem;">
+      <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.6rem;">
+        MANUAL ENTRY — SECRET KEY
+      </div>
+
+      <div id="keyMasked" style="background:rgba(0,0,0,.4);border:1px solid var(--border2);border-radius:var(--radius);padding:.7rem 1rem;font-family:var(--mono);font-size:.9rem;letter-spacing:.2em;color:var(--text-dim);filter:blur(5px);user-select:none;transition:filter .3s;word-break:break-all;">
+        {{ secret }}
+      </div>
+      <div id="keyReal" style="display:none;background:rgba(0,229,255,.05);border:1px solid var(--border);border-radius:var(--radius);padding:.7rem 1rem;font-family:var(--mono);font-size:.85rem;letter-spacing:.12em;color:var(--c);word-break:break-all;">
+        {{ secret }}
+      </div>
+
+      <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+        <button type="button" onclick="toggleKey()" id="keyBtn" class="btn-ghost" style="flex:1;font-size:.72rem;padding:.5rem;">
+          <i class="fa-solid fa-eye" id="keyIcon"></i> Hiện Key
+        </button>
+        <button type="button" onclick="copyKey()" id="copyBtn" class="btn-ghost" style="flex:1;font-size:.72rem;padding:.5rem;">
+          <i class="fa-solid fa-copy"></i> Copy
+        </button>
+      </div>
     </div>
   </div>
 
-  <form method="POST" style="margin-top:1.5rem;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <label>Nhập OTP Code để xác minh</label>
-    <div style="display:flex;gap:.8rem;">
-      <input type="text" name="otp_code" placeholder="6 chữ số..." maxlength="6" required style="flex:1;letter-spacing:.3em;font-size:1.2rem;text-align:center;">
-      <button type="submit" style="flex-shrink:0;"><i class="fa-solid fa-check"></i> Verify</button>
-    </div>
-  </form>
+  <!-- RIGHT: Verify -->
+  <div class="tool-box" style="margin-bottom:0;">
+    <h2 style="font-size:.9rem;"><i class="fa-solid fa-shield-check"></i> Verify OTP</h2>
 
-  {% if status == 'SUCCESS' %}
-    <div class="alert alert-success"><i class="fa-solid fa-check-circle"></i> Xác thực thành công! Code hợp lệ.</div>
-  {% elif status == 'FAILED' %}
-    <div class="alert alert-danger"><i class="fa-solid fa-xmark-circle"></i> Xác thực thất bại — code sai hoặc hết hạn.</div>
-  {% endif %}
+    <!-- Steps -->
+    <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.5rem;">
+      {% for step, text in [
+        ('1', 'Tải Google Authenticator hoặc Authy'),
+        ('2', 'Mở app → Thêm tài khoản → Scan QR bên trái'),
+        ('3', 'App sẽ hiện mã 6 số, thay đổi mỗi 30 giây'),
+        ('4', 'Nhập mã vào ô bên dưới để xác minh')
+      ] %}
+      <div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;background:rgba(0,0,0,.2);border:1px solid var(--border2);border-radius:var(--radius);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--c-faint);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.68rem;color:var(--c);flex-shrink:0;">{{ step }}</div>
+        <span style="font-family:var(--mono);font-size:.76rem;color:var(--text);">{{ text }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <label>Mã OTP từ Authenticator App</label>
+      <input type="text" name="otp_code"
+             placeholder="_ _ _ _ _ _"
+             maxlength="6" required
+             style="letter-spacing:.5em;font-size:1.6rem;text-align:center;font-family:var(--mono);padding:1rem;"
+             autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <button type="submit" style="width:100%;margin-top:.8rem;font-size:.9rem;">
+        <i class="fa-solid fa-check-circle"></i> Xác Minh OTP
+      </button>
+    </form>
+
+    {% if status == 'SUCCESS' %}
+      <div class="alert alert-success" style="margin-top:1rem;">
+        <i class="fa-solid fa-check-circle"></i> <strong>Xác thực thành công!</strong> Code hợp lệ.
+      </div>
+    {% elif status == 'FAILED' %}
+      <div class="alert alert-danger" style="margin-top:1rem;">
+        <i class="fa-solid fa-xmark-circle"></i> <strong>Thất bại!</strong> Code sai hoặc đã hết hạn (30s).
+      </div>
+    {% endif %}
+
+    <!-- Security note -->
+    <div style="margin-top:1.5rem;padding:.8rem;background:rgba(255,204,0,.05);border:1px solid rgba(255,204,0,.2);border-radius:var(--radius);">
+      <p style="font-family:var(--mono);font-size:.7rem;color:var(--c4);line-height:1.6;margin:0;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>Lưu ý bảo mật:</strong> Secret key chỉ nên chia sẻ qua QR Code. Không chụp màn hình hay gửi key qua tin nhắn.
+      </p>
+    </div>
+  </div>
+
 </div>
+
+<script>
+// ── Generate QR Code ──────────────────────────────────────
+// Build otpauth URI chuẩn RFC 6238
+const secret = "{{ secret }}";
+const issuer = "CyberSecLab";
+const account = "{{ current_user.username }}";
+const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+
+new QRCode(document.getElementById("qrcode"), {
+  text: otpauthUrl,
+  width: 180,
+  height: 180,
+  colorDark: "#000000",
+  colorLight: "#ffffff",
+  correctLevel: QRCode.CorrectLevel.H
+});
+
+// ── Toggle secret key visibility ──────────────────────────
+let keyVisible = false;
+function toggleKey() {
+  keyVisible = !keyVisible;
+  document.getElementById('keyMasked').style.display = keyVisible ? 'none' : 'block';
+  document.getElementById('keyReal').style.display   = keyVisible ? 'block' : 'none';
+  document.getElementById('keyBtn').innerHTML = keyVisible
+    ? '<i class="fa-solid fa-eye-slash"></i> Ẩn Key'
+    : '<i class="fa-solid fa-eye"></i> Hiện Key';
+}
+
+// ── Copy key ──────────────────────────────────────────────
+function copyKey() {
+  navigator.clipboard.writeText(secret).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Đã copy!';
+    btn.style.borderColor = 'var(--c3)';
+    btn.style.color = 'var(--c3)';
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2000);
+  });
+}
+</script>
+
+<style>
+@media(max-width:700px){
+  div[style*="grid-template-columns:1fr 1fr"]{ grid-template-columns:1fr !important; }
+}
+</style>
 {% endblock %}

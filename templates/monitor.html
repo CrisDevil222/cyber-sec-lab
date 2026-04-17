@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}System Monitor - SOC{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <h2 style="text-align: center; color: #00C851; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">
+        <i class="fa-solid fa-server"></i> Security Operations Center (SOC)
+    </h2>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.7); border: 1px solid #00d2ff; border-radius: 10px; padding: 20px; text-align: center;">
+            <h3 style="color: #00d2ff; margin-bottom: 15px;"><i class="fa-solid fa-microchip"></i> CPU Usage</h3>
+            <h1 style="color: white; font-size: 2.5rem; margin: 0;">{{ cpu }}%</h1>
+            <div style="width: 100%; background: #222; border-radius: 5px; margin-top: 15px; height: 10px;">
+                <div style="width: {{ cpu }}%; background: #00d2ff; height: 100%; border-radius: 5px; transition: width 0.5s;"></div>
+            </div>
+        </div>
+
+        <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.7); border: 1px solid #ffbb33; border-radius: 10px; padding: 20px; text-align: center;">
+            <h3 style="color: #ffbb33; margin-bottom: 15px;"><i class="fa-solid fa-memory"></i> RAM Usage</h3>
+            <h1 style="color: white; font-size: 2.5rem; margin: 0;">{{ ram }}%</h1>
+            <div style="width: 100%; background: #222; border-radius: 5px; margin-top: 15px; height: 10px;">
+                <div style="width: {{ ram }}%; background: #ffbb33; height: 100%; border-radius: 5px; transition: width 0.5s;"></div>
+            </div>
+        </div>
+
+        <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.7); border: 1px solid #ff4444; border-radius: 10px; padding: 20px; text-align: center;">
+            <h3 style="color: #ff4444; margin-bottom: 15px;"><i class="fa-solid fa-hard-drive"></i> Disk Usage</h3>
+            <h1 style="color: white; font-size: 2.5rem; margin: 0;">{{ disk }}%</h1>
+            <div style="width: 100%; background: #222; border-radius: 5px; margin-top: 15px; height: 10px;">
+                <div style="width: {{ disk }}%; background: #ff4444; height: 100%; border-radius: 5px; transition: width 0.5s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.7); border: 1px solid {{ target_color }}; border-radius: 10px; padding: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 15px {{ target_color }}40;">
+        <div>
+            <h3 style="color: white; margin-bottom: 5px;">
+                <i class="fa-solid fa-crosshairs" style="color: {{ target_color }};"></i> CTF Target Status
+            </h3>
+            <a href="{{ target_url }}" target="_blank" style="color: #00d2ff; text-decoration: none; font-family: monospace; font-size: 1.1rem;">
+                {{ target_url }}
+            </a>
+        </div>
+        
+        <div style="text-align: right;">
+            <div style="font-size: 1.2rem; color: {{ target_color }}; font-weight: bold; margin-bottom: 5px;">
+                <span style="display: inline-block; width: 10px; height: 10px; background: {{ target_color }}; border-radius: 50%; margin-right: 5px; box-shadow: 0 0 8px {{ target_color }};"></span>
+                {{ target_status }}
+            </div>
+            <div style="color: #aaa; font-family: monospace;">
+                <i class="fa-solid fa-stopwatch"></i> Ping: {{ target_ping }}
+            </div>
+        </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.7); border: 1px solid #00C851; border-radius: 10px; padding: 25px; box-shadow: 0 0 15px rgba(0, 200, 81, 0.1);">
+        <h3 style="color: #00C851; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa-solid fa-network-wired"></i> Live Traffic Log</span>
+            <span style="font-size: 1rem; color: white; background: #00C851; padding: 5px 15px; border-radius: 20px;">
+                Total Requests: {{ total_visits }}
+            </span>
+        </h3>
+        
+        <div style="overflow-x: auto; max-height: 300px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; color: #ccc;">
+                <thead style="position: sticky; top: 0; background: #111;">
+                    <tr style="border-bottom: 2px solid #333; color: #00C851;">
+                        <th style="padding: 12px;">Thời gian</th>
+                        <th style="padding: 12px;">IP Address</th>
+                        <th style="padding: 12px;">Endpoint (Đường dẫn)</th>
+                    </tr>
+                </thead>
+                <tbody id="traffic-log-body">
+                    {% for log in traffic %}
+                    <tr style="border-bottom: 1px solid #222; transition: 0.3s;" onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 12px;">{{ log.timestamp.strftime('%H:%M:%S - %d/%m/%Y') }}</td>
+                        <td style="padding: 12px; color: #ffbb33; font-family: monospace;">{{ log.ip_address }}</td>
+                        <td style="padding: 12px; color: #00d2ff;">{{ log.endpoint }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="padding: 20px; text-align: center;">Chưa có dữ liệu truy cập.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; background: rgba(50, 0, 0, 0.6); border: 1px solid #ff4444; border-radius: 10px; padding: 25px; box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);">
+        <h3 style="color: #ff4444; margin-bottom: 15px;">
+            <i class="fa-solid fa-shield-virus"></i> Firewall Alerts (Auto-Block)
+        </h3>
+        <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 15px;">Danh sách các địa chỉ IP có dấu hiệu spam/DDoS (>30 requests/10s) đã bị chặn tự động.</p>
+        
+        <ul id="ddos-list" style="list-style-type: none; padding: 0; color: #ffbb33; font-family: monospace; font-size: 1.1rem;">
+            <li style="color: #00C851;"><i class="fa-solid fa-check-circle"></i> Trạng thái an toàn: Chưa phát hiện tấn công.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // 1. Khởi tạo Socket.IO kết nối đến namespace /soc
+    const socket = io('/soc');
+
+    // Mảng lưu tạm các Traffic Log mới nhất (tối đa 50)
+    let totalTraffic = {{ total_visits }};
+    const MAX_ROWS = 50;
+    
+    // 2. Lắng nghe event Traffic mới
+    socket.on('new_traffic', function(data) {
+        // Tăng đếm
+        totalTraffic++;
+        document.querySelector('.fa-network-wired').parentElement.nextElementSibling.innerText = "Total Requests: " + totalTraffic;
+        
+        // Thêm dòng mới vào đầu bảng
+        const tbody = document.getElementById('traffic-log-body');
+        
+        // Nếu là dòng "Chưa có dữ liệu" thì xóa đi
+        if (tbody.children.length === 1 && tbody.children[0].innerText.includes("Chưa có dữ liệu")) {
+            tbody.innerHTML = '';
+        }
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = "1px solid #222";
+        tr.style.transition = "0.3s";
+        tr.onmouseover = function() { this.style.background = '#222'; };
+        tr.onmouseout = function() { this.style.background = 'transparent'; };
+        
+        // Tạo HTML cho hàng
+        // Highlight nền xíu nếu nhận mới
+        tr.style.background = 'rgba(0, 200, 81, 0.2)';
+        tr.innerHTML = `
+            <td style="padding: 12px;">${data.timestamp}</td>
+            <td style="padding: 12px; color: #ffbb33; font-family: monospace;">${data.ip}</td>
+            <td style="padding: 12px; color: #00d2ff;">${data.endpoint}</td>
+        `;
+        
+        // Insert trước hàng đầu tiên
+        if (tbody.firstChild) {
+            tbody.insertBefore(tr, tbody.firstChild);
+        } else {
+            tbody.appendChild(tr);
+        }
+        
+        // Hiệu ứng mờ dần về trong suốt
+        setTimeout(() => { tr.style.background = 'transparent'; }, 800);
+        
+        // Giữ bảng độ dài cố định
+        if (tbody.children.length > MAX_ROWS) {
+            tbody.removeChild(tbody.lastChild);
+        }
+    });
+
+    // 3. Lắng nghe event Alert (DDoS) mới
+    socket.on('new_alert', function(data) {
+        const ddosList = document.getElementById('ddos-list');
+        
+        // Nếu đang là trạng thái an toàn thì xóa đi
+        if (ddosList.children.length === 1 && ddosList.children[0].innerText.includes("an toàn")) {
+            ddosList.innerHTML = '';
+        }
+        
+        const li = document.createElement('li');
+        li.style.padding = "8px 0";
+        li.style.borderBottom = "1px dashed #555";
+        li.style.color = "#ffbb33";
+        li.innerHTML = `🚨 <b style="color:#ff4444;">BANNED:</b> ${data.ip} (Lúc ${data.timestamp})`;
+        
+        ddosList.appendChild(li);
+        
+        // Hiệu ứng cảnh báo cho Box Firewall
+        const firewallBox = ddosList.parentElement;
+        firewallBox.style.boxShadow = "0 0 40px rgba(255, 68, 68, 0.8)";
+        setTimeout(() => { firewallBox.style.boxShadow = "0 0 20px rgba(255, 68, 68, 0.2)"; }, 1000);
+    });
+
+    // Vẫn giữ Polling định kỳ cho CPU, RAM và Ping vì các thông số này thay đổi liên tục
+    setInterval(function() {
+        fetch('/admin/api/monitor_data')
+            .then(response => response.json())
+            .then(data => {
+                // Cập nhật CPU và RAM
+                document.querySelector('.fa-microchip').parentElement.nextElementSibling.innerText = data.cpu + '%';
+                document.querySelector('.fa-microchip').parentElement.nextElementSibling.nextElementSibling.firstElementChild.style.width = data.cpu + '%';
+                
+                document.querySelector('.fa-memory').parentElement.nextElementSibling.innerText = data.ram + '%';
+                document.querySelector('.fa-memory').parentElement.nextElementSibling.nextElementSibling.firstElementChild.style.width = data.ram + '%';
+
+                // Cập nhật Mục tiêu CTF
+                const targetBox = document.querySelector('.fa-crosshairs').parentElement.parentElement.parentElement;
+                targetBox.style.borderColor = data.target_color;
+                targetBox.style.boxShadow = `0 0 15px ${data.target_color}40`;
+                
+                const statusIcon = targetBox.querySelector('.fa-crosshairs');
+                statusIcon.style.color = data.target_color;
+                
+                const statusDot = targetBox.querySelector('span[style*="border-radius: 50%"]');
+                statusDot.style.background = data.target_color;
+                statusDot.style.boxShadow = `0 0 8px ${data.target_color}`;
+                statusDot.parentElement.style.color = data.target_color;
+                statusDot.parentElement.innerHTML = `<span style="display: inline-block; width: 10px; height: 10px; background: ${data.target_color}; border-radius: 50%; margin-right: 5px; box-shadow: 0 0 8px ${data.target_color};"></span>${data.target_status}`;
+                
+                targetBox.querySelector('.fa-stopwatch').parentElement.innerHTML = `<i class="fa-solid fa-stopwatch"></i> Ping: ${data.target_ping}`;
+            })
+            .catch(err => console.error("Lỗi cập nhật SOC:", err));
+    }, 2000); 
+</script>
+{% endblock %}

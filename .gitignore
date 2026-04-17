@@ -1,1 +1,34 @@
+# Virtual environments
 .venv/
+venv/
+
+# Environment secrets — KHÔNG push lên GitHub!
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+instance/
+*.db
+*.sqlite3
+
+# Uploads
+uploads_temp/
+static/stego_uploads/
+
+# Build / dist
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/settings.json
+.idea/
+.venv_new/
+

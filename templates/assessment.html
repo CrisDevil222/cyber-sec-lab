@@ -1,46 +1,164 @@
 {% extends "base.html" %}
-{% block title %}Password Audit{% endblock %}
+{% block title %}Password Strength Audit — Cyber Security Lab{% endblock %}
 {% block content %}
+
 <div class="tool-box">
-  <h2><i class="fa-solid fa-stethoscope"></i> Password Strength Audit</h2>
-  <p>Đánh giá độ mạnh mật khẩu dựa trên tiêu chí bảo mật.</p>
+  <h2><i class="fa-solid fa-shield-halved"></i> Password Strength Audit</h2>
+  <p>Đánh giá độ mạnh mật khẩu theo tiêu chí bảo mật hiện đại. Kiểm tra diễn ra hoàn toàn trên trình duyệt — mật khẩu <strong>không được gửi lên server</strong>.</p>
+</div>
 
-  <form method="POST" style="margin-top:1.5rem;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <label>Nhập mật khẩu cần kiểm tra</label>
-    <div style="display:flex;gap:.8rem;">
-      <input type="text" name="password_check" placeholder="Nhập mật khẩu..." required style="flex:1;">
-      <button type="submit" style="flex-shrink:0;"><i class="fa-solid fa-magnifying-glass"></i> Audit</button>
-    </div>
-  </form>
+<div class="tool-box">
+  <label>Nhập mật khẩu cần kiểm tra</label>
+  <div class="input-group has-suffix" style="margin-top:.4rem;">
+    <i class="fa-solid fa-lock prefix"></i>
+    <input type="password" id="pwInput" name="password_check"
+           placeholder="Nhập mật khẩu ở đây..."
+           oninput="analyzePassword(this.value)" autocomplete="off">
+    <i class="fa-solid fa-eye suffix" id="pwEye" onclick="togglePw()"></i>
+  </div>
 
-  {% if audit %}
-  <div class="result-box">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center;margin-bottom:1.5rem;">
-      <div>
-        <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem;">SCORE</div>
-        <div style="font-size:1.8rem;font-weight:800;color:var(--c);">{{ audit.score }}/4</div>
-      </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem;">VERDICT</div>
-        <div style="font-size:1.4rem;font-weight:800;color:{% if audit.verdict == 'MẠNH' %}var(--c3){% else %}var(--c2){% endif %};">
-          {{ audit.verdict }}
-        </div>
-      </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);margin-bottom:.3rem;">STRENGTH</div>
-        <div class="progress-track" style="margin-top:.6rem;">
-          <div class="progress-fill" style="width:{{ (audit.score/4*100)|int }}%;{% if audit.score < 2 %}background:var(--c2);{% elif audit.score < 4 %}background:var(--c4);{% endif %}"></div>
-        </div>
-      </div>
+  <!-- Strength bar -->
+  <div style="margin-top:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
+      <span style="font-family:var(--mono);font-size:.68rem;color:var(--text-dim);letter-spacing:.1em;">STRENGTH</span>
+      <span id="strengthLabel" style="font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--text-dim);">—</span>
     </div>
-    <h3>Policy Checks</h3>
-    <div style="display:flex;flex-direction:column;gap:.4rem;">
-      {% for check in audit.checks %}
-        <div style="font-family:var(--mono);font-size:.78rem;padding:.4rem .7rem;background:rgba(255,255,255,.02);border-radius:var(--radius);">{{ check }}</div>
-      {% endfor %}
+    <div class="progress-track">
+      <div class="progress-fill" id="strengthBar" style="width:0%;transition:width .4s,background .4s;"></div>
     </div>
   </div>
-  {% endif %}
 </div>
+
+<!-- Result panels (live update) -->
+<div id="resultSection" style="display:none;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;">
+
+    <!-- Score & Stats -->
+    <div class="tool-box" style="margin-bottom:0;">
+      <h2 style="font-size:.9rem;"><i class="fa-solid fa-chart-bar"></i> Score & Analysis</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem;text-align:center;">
+        <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:.8rem;">
+          <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:var(--text-dim);margin-bottom:.3rem;">SCORE</div>
+          <div id="scoreVal" style="font-size:1.8rem;font-weight:800;font-family:var(--display);color:var(--c);">0/5</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:.8rem;">
+          <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:var(--text-dim);margin-bottom:.3rem;">LENGTH</div>
+          <div id="lengthVal" style="font-size:1.8rem;font-weight:800;font-family:var(--display);color:var(--c4);">0</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:.8rem;">
+          <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:var(--text-dim);margin-bottom:.3rem;">ENTROPY</div>
+          <div id="entropyVal" style="font-size:1.4rem;font-weight:800;font-family:var(--display);color:var(--c);">0 bits</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border:1px solid var(--border2);border-radius:var(--radius);padding:.8rem;">
+          <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:var(--text-dim);margin-bottom:.3rem;">VERDICT</div>
+          <div id="verdictVal" style="font-size:1rem;font-weight:800;font-family:var(--display);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checklist -->
+    <div class="tool-box" style="margin-bottom:0;">
+      <h2 style="font-size:.9rem;"><i class="fa-solid fa-list-check"></i> Policy Checks</h2>
+      <div id="checkList" style="display:flex;flex-direction:column;gap:.4rem;margin-top:.8rem;"></div>
+    </div>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="tool-box" id="suggestBox" style="margin-top:1.2rem;border-color:rgba(255,204,0,.2);display:none;">
+    <h2 style="font-size:.9rem;color:var(--c4);"><i class="fa-solid fa-lightbulb"></i> Gợi ý cải thiện</h2>
+    <ul id="suggestList" style="list-style:none;display:flex;flex-direction:column;gap:.4rem;margin-top:.6rem;"></ul>
+  </div>
+</div>
+
+<script>
+const COMMON = ['password','123456','qwerty','abc123','letmein','admin','welcome','monkey','dragon','master','hello'];
+
+function analyzePassword(pw) {
+  const section = document.getElementById('resultSection');
+  if (!pw) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  // Checks
+  const checks = [
+    { label: 'Tối thiểu 8 ký tự', pass: pw.length >= 8 },
+    { label: 'Chứa chữ HOA (A-Z)', pass: /[A-Z]/.test(pw) },
+    { label: 'Chứa chữ thường (a-z)', pass: /[a-z]/.test(pw) },
+    { label: 'Chứa số (0-9)', pass: /\d/.test(pw) },
+    { label: 'Chứa ký tự đặc biệt (!@#$...)', pass: /[^A-Za-z0-9]/.test(pw) },
+  ];
+  const score = checks.filter(c => c.pass).length;
+  const isCommon = COMMON.some(c => pw.toLowerCase().includes(c));
+
+  // Entropy
+  const pool = ((/[a-z]/.test(pw) ? 26 : 0) + (/[A-Z]/.test(pw) ? 26 : 0) +
+                (/\d/.test(pw) ? 10 : 0) + (/[^A-Za-z0-9]/.test(pw) ? 32 : 0)) || 1;
+  const entropy = Math.round(pw.length * Math.log2(pool));
+
+  // Strength
+  let strength, color, pct;
+  if (isCommon || score <= 1) { strength = 'VERY WEAK'; color = '#ff2244'; pct = 15; }
+  else if (score === 2) { strength = 'WEAK'; color = 'var(--c2)'; pct = 30; }
+  else if (score === 3) { strength = 'FAIR'; color = 'var(--c4)'; pct = 55; }
+  else if (score === 4) { strength = 'STRONG'; color = '#44aaff'; pct = 78; }
+  else { strength = 'VERY STRONG'; color = 'var(--c3)'; pct = 100; }
+
+  if (isCommon) { strength = 'VERY WEAK (Common!)'; color = '#ff2244'; pct = 10; }
+
+  // Update UI
+  document.getElementById('strengthBar').style.width = pct + '%';
+  document.getElementById('strengthBar').style.background = color;
+  document.getElementById('strengthLabel').textContent = strength;
+  document.getElementById('strengthLabel').style.color = color;
+  document.getElementById('scoreVal').textContent = score + '/5';
+  document.getElementById('scoreVal').style.color = color;
+  document.getElementById('lengthVal').textContent = pw.length;
+  document.getElementById('entropyVal').textContent = entropy + ' bits';
+  document.getElementById('verdictVal').textContent = strength.split(' ')[0] + (strength.includes('STRONG') ? ' ✓' : ' ✗');
+  document.getElementById('verdictVal').style.color = color;
+
+  // Checklist
+  const cl = document.getElementById('checkList');
+  cl.innerHTML = checks.map(c => `
+    <div style="font-family:var(--mono);font-size:.78rem;padding:.4rem .8rem;
+                background:${c.pass ? 'rgba(0,255,136,.06)' : 'rgba(255,45,85,.05)'};
+                border:1px solid ${c.pass ? 'rgba(0,255,136,.2)' : 'rgba(255,45,85,.15)'};
+                border-radius:var(--radius);display:flex;align-items:center;gap:.6rem;">
+      <i class="fa-solid fa-${c.pass ? 'check-circle' : 'xmark-circle'}"
+         style="color:${c.pass ? 'var(--c3)' : 'var(--c2)'};flex-shrink:0;"></i>
+      <span style="color:${c.pass ? 'var(--text)' : 'var(--text-dim)'};">${c.label}</span>
+    </div>`).join('') + (isCommon ? `
+    <div style="font-family:var(--mono);font-size:.78rem;padding:.4rem .8rem;
+                background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.3);
+                border-radius:var(--radius);display:flex;align-items:center;gap:.6rem;">
+      <i class="fa-solid fa-skull" style="color:var(--c2);flex-shrink:0;"></i>
+      <span style="color:var(--c2);">Mật khẩu phổ biến — rất dễ đoán!</span>
+    </div>` : '');
+
+  // Suggestions
+  const suggs = [];
+  if (pw.length < 12) suggs.push('Tăng độ dài lên ít nhất 12 ký tự');
+  if (!/[A-Z]/.test(pw)) suggs.push('Thêm chữ IN HOA');
+  if (!/[^A-Za-z0-9]/.test(pw)) suggs.push('Thêm ký tự đặc biệt như @, #, !, $');
+  if (isCommon) suggs.push('Tránh dùng mật khẩu phổ biến như "password", "123456"');
+  if (entropy < 50) suggs.push('Mật khẩu có entropy thấp — cân nhắc dùng passphrase ngẫu nhiên');
+
+  const sb = document.getElementById('suggestBox');
+  const sl = document.getElementById('suggestList');
+  if (suggs.length > 0) {
+    sl.innerHTML = suggs.map(s => `<li style="font-family:var(--mono);font-size:.78rem;color:var(--c4);padding:.3rem 0;display:flex;gap:.6rem;align-items:flex-start;">
+      <i class="fa-solid fa-arrow-right" style="flex-shrink:0;margin-top:2px;"></i> ${s}</li>`).join('');
+    sb.style.display = 'block';
+  } else {
+    sb.style.display = 'none';
+  }
+}
+
+function togglePw() {
+  const inp = document.getElementById('pwInput'), eye = document.getElementById('pwEye');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  eye.className = (show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye') + ' suffix';
+  eye.style.color = show ? 'var(--c)' : '';
+}
+</script>
 {% endblock %}

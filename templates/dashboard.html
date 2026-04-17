@@ -84,7 +84,16 @@
     <p>Đánh giá độ mạnh mật khẩu.</p>
   </a>
 
+  {% if current_user.role == 'admin' %}
+  <a href="{{ url_for('system_monitor') }}" class="card" style="border-color: #00C851; box-shadow: 0 0 15px rgba(0, 200, 81, 0.2);">
+      <div class="card-icon" style="color: #00C851;"><i class="fa-solid fa-server"></i></div>
+      <h3 style="color: #00C851;">SOC Monitor</h3>
+      <p>Giám sát máy chủ &amp; Firewall chống DDoS.</p>
+  </a>
+  {% endif %}
+
 </div>
+
 
 <!-- Feedback -->
 <div class="feedback-section">

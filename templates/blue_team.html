@@ -192,8 +192,9 @@
       <div class="lf-bar">
         <div class="ld r"></div><div class="ld y"></div><div class="ld g"></div>
         <span class="lf-title">soc-monitor@siem — live feed</span>
-        <span class="lf-count">[{{ logs|length }} events]</span>
+        <span class="lf-count" id="log-count">[{{ logs|length }} events]</span>
       </div>
+      <div id="live-log-wrapper">
       {% if logs %}
         {% for log in logs %}
           <div class="ll">
@@ -211,8 +212,9 @@
           </div>
         {% endfor %}
       {% else %}
-        <div class="lf-empty">// No events recorded yet</div>
+        <div class="lf-empty" id="empty-log-msg">// No events recorded yet</div>
       {% endif %}
+      </div>
     </div>
 
   </div>
@@ -339,4 +341,66 @@
   </div>
 
 </div>
+
+<script>
+    const socket = io('/soc');
+    let totalLogs = {{ logs|length }};
+    const logWrapper = document.getElementById('live-log-wrapper');
+    const logCountDisplay = document.getElementById('log-count');
+
+    socket.on('new_log', function(data) {
+        totalLogs++;
+        logCountDisplay.innerText = `[${totalLogs} events]`;
+
+        const emptyMsg = document.getElementById('empty-log-msg');
+        if (emptyMsg) emptyMsg.remove();
+
+        const actionObj = data.action || "";
+        let lvlClass = "lvl-inf";
+        let lvlText = "INFO";
+
+        if (actionObj.includes('Attack') || actionObj.includes('SQLi') || actionObj.includes('XSS') || actionObj.includes('RCE')) {
+            lvlClass = "lvl-crt";
+            lvlText = "CRIT";
+        } else if (actionObj.includes('Alert') || actionObj.includes('Detected')) {
+            lvlClass = "lvl-wrn";
+            lvlText = "WARN";
+        } else if (actionObj.includes('Solved')) {
+            lvlClass = "lvl-ok";
+            lvlText = "OK";
+        }
+
+        const timeStr = data.timestamp.split(' ')[1]; // Extract HH:MM:SS
+        
+        const llDiv = document.createElement('div');
+        llDiv.className = 'll';
+        llDiv.innerHTML = `
+            <span class="ll-time">${timeStr}</span>
+            <span class="ll-lvl ${lvlClass}">${lvlText}</span>
+            <span class="ll-msg">${data.action} — user#${data.user}</span>
+        `;
+        
+        // Highlight when newly added
+        llDiv.style.background = 'rgba(0, 200, 255, 0.2)';
+        llDiv.style.transition = 'background 0.8s';
+
+        if (logWrapper.firstChild) {
+            logWrapper.insertBefore(llDiv, logWrapper.firstChild);
+        } else {
+            logWrapper.appendChild(llDiv);
+        }
+
+        setTimeout(() => { llDiv.style.background = 'transparent'; }, 800);
+        
+        if (logWrapper.children.length > 50) {
+            logWrapper.removeChild(logWrapper.lastChild);
+        }
+        
+        // Cập nhật số liệu trên Defence Stats
+        const statsEl = document.querySelector('.bs-val'); // First one is Total Events
+        if (statsEl && statsEl.previousElementSibling.previousElementSibling.innerText === 'Total Events Logged') {
+            statsEl.innerText = parseInt(statsEl.innerText) + 1;
+        }
+    });
+</script>
 {% endblock %}

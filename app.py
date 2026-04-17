@@ -1,5 +1,5 @@
-import os 
-import base64
+import os
+import time
 import socket
 import platform
 import psutil
@@ -10,154 +10,128 @@ import hmac
 import hashlib
 import base64
 import subprocess
-import joblib 
-import requests
+import ipaddress
+import joblib
+import urllib3
 from datetime import datetime
-from flask_mail import Mail, Message # <--- THÊM DÒNG NÀY
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from itsdangerous import URLSafeTimedSerializer  # <--- THÊM DÒNG NÀY
-from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, send_from_directory
+from urllib.parse import urlparse, urljoin
+from dotenv import load_dotenv
+
+# Load biến môi trường từ file .env
+load_dotenv()
+
+# Đường dẫn gốc của project (dùng cho path tuyệt đối)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
+from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_socketio import SocketIO
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
+from itsdangerous import URLSafeTimedSerializer
 from cryptography.fernet import Fernet
 from flask_wtf.csrf import CSRFProtect
+
+# Tắt cảnh báo khi ping HTTPS mục tiêu
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # --- QUAN TRỌNG: Phải định nghĩa hàm này y hệt như bên file train ---
 def custom_tokenizer(url):
     return str(url).split('.')
-# -------------------------------------------------------------------
-# Thư viện Steganography
+
+# --- KIỂM TRA THƯ VIỆN ---
 try:
     from stegano import lsb
     from PIL import Image
 except ImportError:
     print("Thiếu thư viện! Hãy chạy: pip install stegano pillow")
 
-# --- KIỂM TRA PYOTP ---
 try:
     import pyotp
 except ImportError:
     print("Thiếu thư viện! Hãy chạy: pip install pyotp")
     exit()
 
-# --- CẤU HÌNH APP ---
+# ==========================================
+# 1. CẤU HÌNH APP & DATABASE
+# ==========================================
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'chuoi-bi-mat-cua-ban' 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-# ... (nếu có các app.config khác thì cứ để ở đây) ...
-
-# CHUYỂN DÒNG NÀY XUỐNG DƯỚI CÙNG (Sau khi đã có Secret Key)
-csrf = CSRFProtect(app)
-
-# --- CẤU HÌNH GMAIL ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465                 # <-- Đổi từ 587 sang 465
-app.config['MAIL_USE_TLS'] = False            # <-- Tắt TLS
-app.config['MAIL_USE_SSL'] = True             # <-- Bật SSL lên
-app.config['MAIL_USERNAME'] = 'crishoang09@gmail.com'
-app.config['MAIL_PASSWORD'] = 'hfgx mygd zycl kwvn'  # Đảm bảo mã này vẫn đúng nhé
-app.config['MAIL_DEFAULT_SENDER'] = 'crishoang09@gmail.com'
-# Khởi tạo Mail
-mail = Mail(app)
-app.config['SECRET_KEY'] = 'ultimate-cyber-lab-key'
-# Tạo bộ sinh mã Token bí mật cho chức năng Quên mật khẩu
-s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback-dev-key-change-me')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Thư mục upload
 app.config['UPLOAD_FOLDER'] = 'uploads_temp'
-app.config['STEGO_FOLDER'] = 'static/stego_uploads' # Thư mục lưu ảnh Stego
-# API Key của AbuseIPDB (Thay bằng key thật của bạn)
-ABUSEIPDB_KEY = "8ff0ad59beabe87ac7299daa193cdc2b40a358a241dc94434a3bfe52d1b0b49d76986283e541422a"
-# Tạo các thư mục cần thiết
+app.config['STEGO_FOLDER'] = 'static/stego_uploads'
 for folder in [app.config['UPLOAD_FOLDER'], app.config['STEGO_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
 
+# Cấu hình Mail (đọc từ .env)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+
+# Khởi tạo Plugins
 db = SQLAlchemy(app)
+mail = Mail(app)
+csrf = CSRFProtect(app)
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# --- DATABASE MODELS ---
+# Khởi tạo SocketIO
+socketio = SocketIO(app, async_mode='eventlet')
+
+# API Key (đọc từ .env)
+ABUSEIPDB_KEY = os.environ.get('ABUSEIPDB_KEY', '')
+
+# Target URL (đọc từ .env)
+CTF_TARGET_URL = os.environ.get('TARGET_URL', 'http://35.247.183.253/')
+
+# Load ML model một lần khi khởi động (tránh load lại mỗi request)
+MODEL_PATH = os.path.join(BASE_DIR, 'phishing_model.pkl')
+phishing_model = joblib.load(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
+if phishing_model:
+    print(">>> Phishing detection model loaded successfully.")
+else:
+    print(">>> WARNING: phishing_model.pkl not found. Run train_model.py first.")
+
+# Helper: kiểm tra URL redirect có an toàn không (chống Open Redirect)
+def is_safe_url(target):
+    if not target:
+        return False
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return (test_url.scheme in ('http', 'https') and
+            ref_url.netloc == test_url.netloc)
+
+# ==========================================
+# 2. DATABASE MODELS
+# ==========================================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)  # <--- CỘT MỚI
+    email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(50), default='user')
     totp_secret = db.Column(db.String(32), nullable=True)
     score = db.Column(db.Integer, default=0)
     solved_challenges = db.Column(db.String(500), default="")
 
-from datetime import datetime
-
-# --- BẢNG LƯU TRỮ ĐÓNG GÓP Ý KIẾN ---
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), nullable=False)  # Lưu tên người góp ý (có thể là username hoặc email)
-    content = db.Column(db.String(1000), nullable=False)  # Nội dung góp ý
-    timestamp = db.Column(db.DateTime, default=datetime.now)  # Thời gian góp
-    
-    
+    username = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.String(1000), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- ROUTE XỬ LÝ FORM GÓP Ý ---
-@app.route('/submit_feedback', methods=['POST'])
-@login_required # Yêu cầu đăng nhập mới được góp ý
-def submit_feedback():
-    # Lấy nội dung người dùng nhập từ form (giả sử ô input name="content" hoặc "message")
-    # Tùy thuộc vào HTML của bạn đặt name là gì nhé, thường là 'content' hoặc 'message'
-    noi_dung = request.form.get('content') 
-    
-    if noi_dung:
-        # 1. Tạo một bản ghi Feedback mới
-        new_feedback = Feedback(username=current_user.username, content=noi_dung)
-        
-        # 2. Thêm vào Database và Lưu lại (Lưu vĩnh viễn)
-        db.session.add(new_feedback)
-        db.session.commit()
-        
-        flash('Cảm ơn bạn đã đóng góp ý kiến!', 'success')
-    else:
-        flash('Vui lòng nhập nội dung góp ý.', 'error')
-        
-    return redirect(url_for('dashboard')) # Hoặc trang nào bạn muốn trả về
-
-    # ... (Phần trên của hàm submit_feedback) ...
-    if name and content:
-        new_fb = Feedback(name=name, content=content)
-        db.session.add(new_fb)
-        db.session.commit()
-        # Hiện thông báo cảm ơn
-        flash('Cảm ơn bạn đã đóng góp ý kiến! Quản trị viên sẽ xem xét.', 'success')
-        
-    # Quay lại trang trước đó
-    return redirect(request.referrer or url_for('index'))
-
-# ==========================================================
-# 👇 BẠN DÁN ĐOẠN CODE ADMIN VÀO NGAY KHOẢNG TRỐNG NÀY 👇
-# ==========================================================
-
-# --- TRANG ADMIN XEM GÓP Ý ---
-@app.route('/admin/feedbacks')
-@login_required
-def admin_feedbacks():
-    # Chặn không cho User thường vào xem
-    if current_user.role != 'admin':
-        abort(403) 
-        
-    # Lấy TẤT CẢ góp ý từ Database ra
-    all_feedbacks = Feedback.query.all()
-    
-    # Truyền sang file HTML để hiển thị
-    return render_template('feedbacks.html', feedbacks=all_feedbacks)
-
-# ==========================================================
-# (Và bên dưới này tiếp tục là các route cũ của bạn...)
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -172,6 +146,12 @@ class Challenge(db.Model):
     points = db.Column(db.Integer)
     category = db.Column(db.String(50))
 
+class TrafficLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(50), nullable=False)
+    endpoint = db.Column(db.String(200), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -182,47 +162,116 @@ def log_action(action):
             new_log = AuditLog(user_id=current_user.id, action=action)
             db.session.add(new_log)
             db.session.commit()
-        except:
+            
+            # Emit event cho Dashboard Real-time
+            socketio.emit('new_log', {
+                'id': new_log.id,
+                'user': current_user.username,
+                'action': action,
+                'timestamp': new_log.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            }, namespace='/soc')
+        except Exception as e:
+            app.logger.error(f"Lỗi log_action: {e}")
             db.session.rollback()
 
-# --- AUTH ROUTES ---
+# ==========================================
+# 3. MIDDLEWARE (CHỐNG DDOS & SOC)
+# ==========================================
+IP_TRACKER = {}
+BLACKLIST = set() 
+REQUEST_LIMIT = 30 
+TIME_WINDOW = 10   
+
+@app.before_request
+def ddos_shield_and_log():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    if ip in BLACKLIST:
+        return "BẠN ĐÃ BỊ CHẶN VÌ CÓ DẤU HIỆU DDOS/SPAM!", 429
+        
+    if request.endpoint and ('static' in request.endpoint or 'api_monitor_data' in request.endpoint):
+        return
+
+    current_time = time.time()
+    if ip not in IP_TRACKER:
+        IP_TRACKER[ip] = []
+        
+    IP_TRACKER[ip] = [t for t in IP_TRACKER[ip] if current_time - t < TIME_WINDOW]
+    IP_TRACKER[ip].append(current_time)
+    
+    if len(IP_TRACKER[ip]) > REQUEST_LIMIT:
+        BLACKLIST.add(ip)
+        print(f"!!! CẢNH BÁO: ĐÃ BLOCK IP {ip} VÌ TẤN CÔNG DDOS !!!")
+        socketio.emit('new_alert', {
+            'type': 'DDoS Blocked',
+            'ip': ip,
+            'timestamp': datetime.utcnow().strftime('%H:%M:%S')
+        }, namespace='/soc')
+        return "BẠN ĐÃ BỊ CHẶN VÌ CÓ DẤU HIỆU DDOS/SPAM!", 429
+
+    try:
+        log = TrafficLog(ip_address=ip, endpoint=request.path)
+        db.session.add(log)
+        db.session.commit()
+        
+        socketio.emit('new_traffic', {
+            'ip': ip,
+            'endpoint': request.path,
+            'timestamp': log.timestamp.strftime('%H:%M:%S')
+        }, namespace='/soc')
+    except Exception as e:
+        print("Lỗi lưu TrafficLog:", e)
+
+# ==========================================
+# 4. ROUTES AUTH & PASSWORD RECOVERY
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        # Lấy trạng thái checkbox "Ghi nhớ đăng nhập"
         remember = True if request.form.get('remember') else False
 
         user = User.query.filter_by(username=username).first()
-
         if user and check_password_hash(user.password, password):
-            # Kích hoạt tính năng ghi nhớ (remember=True)
             login_user(user, remember=remember)
             flash('Đăng nhập thành công!', 'success')
-            return redirect(request.args.get('next') or url_for('dashboard'))
+            # Fix Open Redirect: validate URL trước khi redirect
+            next_url = request.args.get('next')
+            if next_url and is_safe_url(next_url):
+                return redirect(next_url)
+            return redirect(url_for('dashboard'))
         else:
             flash('Sai tài khoản hoặc mật khẩu!', 'error')
-            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if current_user.is_authenticated: return redirect(url_for('dashboard'))
+    
     if request.method == 'POST':
-        email = request.form.get('email')
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        # Kiểm tra trùng lặp (Username hoặc Email)
-        user_exists = User.query.filter((User.username == username) | (User.email == email)).first()
+        email = request.form.get('email', '').strip().lower()
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-        if user_exists:
+        if len(username) < 3:
+            flash('Tên đăng nhập phải có ít nhất 3 ký tự!', 'error')
+            return render_template('register.html')
+
+        email_regex = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, email):
+            flash('Địa chỉ email không hợp lệ!', 'error')
+            return render_template('register.html')
+
+        if len(password) < 8:
+            flash('Mật khẩu phải có ít nhất 8 ký tự!', 'error')
+            return render_template('register.html')
+
+        if User.query.filter((User.username == username) | (User.email == email)).first():
             flash('Tên đăng nhập hoặc Email đã được sử dụng!', 'error')
         else:
             hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-            # Lưu user mới kèm email
             new_user = User(email=email, username=username, password=hashed_password, role='user')
-            
             db.session.add(new_user)
             db.session.commit()
             flash('Đăng ký thành công! Vui lòng đăng nhập.', 'success')
@@ -236,30 +285,61 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- MAIN ROUTES ---
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = s.dumps(user.email, salt='reset-password')
+            link = url_for('reset_password', token=token, _external=True)
+            
+            # (Lab Mode): In link ra Terminal để lấy link nhanh khi Render chặn mail
+            print(f">>> LINK KHÔI PHỤC (LAB MODE): {link}")
+            flash('Đã gửi link khôi phục! Kiểm tra email (hoặc xem Terminal nếu dùng Lab Mode).', 'success')
+
+            # Code gửi mail thật (Chỉ chạy được ở máy Local, Render miễn phí sẽ bị lỗi 502)
+            try:
+                msg = Message('Khôi phục mật khẩu - CyberSec Lab', recipients=[email])
+                msg.body = f"Chào {user.username},\nBấm vào đây để đổi mật khẩu:\n{link}"
+                mail.send(msg)
+            except Exception as mail_err:
+                app.logger.warning(f"Gửi mail thất bại: {mail_err}")
+                
+        else:
+            flash('Email này chưa được đăng ký!', 'error')
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = s.loads(token, salt='reset-password', max_age=300)
+    except:
+        flash('Link không hợp lệ hoặc hết hạn!', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.password = generate_password_hash(request.form.get('password'), method='pbkdf2:sha256')
+            db.session.commit()
+            flash('Đổi mật khẩu thành công!', 'success')
+            return redirect(url_for('login'))
+    return render_template('reset_password.html')
+
+# ==========================================
+# 5. CORE & ADMIN ROUTES
+# ==========================================
 @app.route('/')
 def index(): return render_template('index.html')
+
+@app.route('/about')
+def about(): return render_template('about.html')
 
 @app.route('/dashboard')
 @login_required
 def dashboard(): return render_template('dashboard.html', name=current_user.username)
-
-# API cho Chart.js
-@app.route('/api/stats')
-@login_required
-def api_stats():
-    # Thống kê cho biểu đồ
-    log_counts = {
-        'Login': AuditLog.query.filter(AuditLog.action == 'Logged in').count(),
-        'Attacks': AuditLog.query.filter(AuditLog.action.contains('Attack')).count(),
-        'Tools': AuditLog.query.filter(~AuditLog.action.in_(['Logged in']) & ~AuditLog.action.contains('Attack')).count()
-    }
-    
-    # Top người dùng tích cực (Top solves)
-    top_users = User.query.order_by(User.score.desc()).limit(5).all()
-    leaderboard = [{'username': u.username, 'score': u.score} for u in top_users]
-    
-    return jsonify({'logs': log_counts, 'leaderboard': leaderboard})
 
 @app.route('/admin')
 @login_required
@@ -268,9 +348,90 @@ def admin():
     logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(50).all()
     return render_template('admin.html', logs=logs)
 
-# --- NEW MODULES ---
+@app.route('/submit_feedback', methods=['POST'])
+@login_required
+def submit_feedback():
+    noi_dung = request.form.get('content') 
+    if noi_dung:
+        new_feedback = Feedback(username=current_user.username, content=noi_dung)
+        db.session.add(new_feedback)
+        db.session.commit()
+        flash('Cảm ơn bạn đã đóng góp ý kiến!', 'success')
+    else:
+        flash('Vui lòng nhập nội dung góp ý.', 'error')
+    return redirect(url_for('dashboard'))
 
-# 1. XSS LAB (Cross-Site Scripting)
+@app.route('/admin/feedbacks')
+@login_required
+def admin_feedbacks():
+    if current_user.role != 'admin': abort(403) 
+    all_feedbacks = Feedback.query.order_by(Feedback.timestamp.desc()).all()
+    return render_template('feedbacks.html', feedbacks=all_feedbacks)
+
+# --- SOC MONITORING ---
+@app.route('/admin/monitor')
+@login_required
+def system_monitor():
+    if current_user.role != 'admin': abort(403)
+        
+    cpu_usage = psutil.cpu_percent(interval=0.1)
+    ram = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    total_visits = TrafficLog.query.count()
+    recent_traffic = TrafficLog.query.order_by(TrafficLog.timestamp.desc()).limit(50).all()
+    
+    # Ping Target CTF (URL đọc từ .env)
+    target_url = CTF_TARGET_URL
+    target_status = "Offline"
+    target_ping = "N/A"
+    status_color = "#ff4444"
+
+    try:
+        response = requests.get(target_url, timeout=5, verify=False)
+        target_ping = f"{round(response.elapsed.total_seconds() * 1000)} ms"
+        if response.status_code == 200:
+            target_status = "Online"
+            status_color = "#00C851"
+        else:
+            target_status = f"Warning (HTTP {response.status_code})"
+            status_color = "#ffbb33"
+    except Exception as e:
+        app.logger.debug(f"Target ping failed: {e}")
+
+    return render_template('monitor.html',
+                           cpu=cpu_usage, ram=ram.percent, disk=disk.percent,
+                           total_visits=total_visits, traffic=recent_traffic,
+                           target_url=target_url, target_status=target_status,
+                           target_ping=target_ping, target_color=status_color)
+
+@app.route('/admin/api/monitor_data')
+@login_required
+def api_monitor_data():
+    if current_user.role != 'admin': abort(403)
+        
+    cpu = psutil.cpu_percent()
+    ram = psutil.virtual_memory().percent
+    
+    target_url = CTF_TARGET_URL
+    target_status, target_ping, target_color = "Offline", "N/A", "#ff4444"
+    try:
+        res = requests.get(target_url, timeout=2, verify=False)
+        target_ping = f"{round(res.elapsed.total_seconds() * 1000)} ms"
+        if res.status_code == 200:
+            target_status, target_color = "Online", "#00C851"
+    except Exception as e:
+        app.logger.debug(f"Target ping failed: {e}")
+        
+    return jsonify({
+        "cpu": cpu, "ram": ram,
+        "target_status": target_status, "target_ping": target_ping, "target_color": target_color,
+        "total_visits": TrafficLog.query.count(),
+        "blocked_ips": list(BLACKLIST)
+    })
+
+# ==========================================
+# 6. LAB MODULES
+# ==========================================
 @app.route('/xss', methods=['GET', 'POST'])
 @login_required
 def xss_lab():
@@ -279,145 +440,87 @@ def xss_lab():
     if request.method == 'POST':
         user_input = request.form.get('payload')
         mode = request.form.get('mode')
-        
         if mode == 'unsafe':
-            # Không lọc gì cả -> XSS chạy
             result_unsafe = user_input
-            if '<script>' in user_input:
-                log_action('XSS Attack Attempted (Reflected)')
+            if '<script>' in user_input: log_action('XSS Attack Attempted (Reflected)')
         else:
-            # Flask tự động escape HTML -> An toàn
             result_safe = user_input
-            
     return render_template('xss.html', unsafe=result_unsafe, safe=result_safe)
 
-# 2. COMMAND INJECTION (RCE)
 @app.route('/cmd_injection', methods=['GET', 'POST'])
 @login_required
 def cmd_injection():
     output = ""
     if request.method == 'POST':
         target_ip = request.form.get('ip')
-        # Lỗ hổng: Nối chuỗi trực tiếp
-        # Windows dùng 'ping -n 1', Linux dùng 'ping -c 1'
         param = '-n' if platform.system().lower() == 'windows' else '-c'
         command = f"ping {param} 1 {target_ip}" 
-        
         try:
-            # Nguy hiểm: shell=True
-            output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=5)
-            output = output.decode('utf-8', errors='ignore') # Decode byte sang string
-            
-            # Kiểm tra xem user có lén chạy lệnh khác không (vd: & dir)
+            output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=5).decode('utf-8', errors='ignore')
             if '&' in target_ip or '|' in target_ip or ';' in target_ip:
                 log_action('Command Injection RCE Detected!')
         except subprocess.CalledProcessError as e:
             output = f"Error: {e.output.decode('utf-8')}"
         except Exception as e:
             output = str(e)
-            
     return render_template('cmd_injection.html', output=output)
 
-# 3. STEGANOGRAPHY (Giấu tin trong ảnh)
-# --- MODULE STEGANOGRAPHY (Đã sửa lỗi Tiếng Việt) ---
 @app.route('/steganography', methods=['GET', 'POST'])
 @login_required
 def steganography():
-    hidden_img_url = None
-    revealed_message = None
-    error = None
-
+    hidden_img_url, revealed_message, error = None, None, None
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # --- XỬ LÝ GIẤU TIN (ENCODE) ---
         if action == 'encode':
-            if 'image' not in request.files:
-                error = 'Chưa chọn ảnh!'
+            if 'image' not in request.files: error = 'Chưa chọn ảnh!'
             else:
                 file = request.files['image']
                 message = request.form.get('message', '')
-
-                if file.filename == '':
-                    error = 'Chưa chọn file ảnh!'
-                elif not message:
-                    error = 'Chưa nhập tin nhắn bí mật!'
+                if file.filename == '': error = 'Chưa chọn file ảnh!'
+                elif not message: error = 'Chưa nhập tin nhắn bí mật!'
                 else:
-                    # Lưu ảnh gốc tạm thời
                     filename = secure_filename(file.filename)
                     input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(input_path)
-
-                    # Tên file đầu ra
                     output_filename = f"secret_{filename.split('.')[0]}.png"
                     output_path = os.path.join(app.config['STEGO_FOLDER'], output_filename)
-
                     try:
-                        # --- QUAN TRỌNG: Mã hóa Tiếng Việt sang Base64 trước khi giấu ---
-                        # 1. Chuyển chuỗi Tiếng Việt sang bytes (utf-8)
-                        # 2. Mã hóa bytes đó sang Base64
-                        # 3. Chuyển lại thành chuỗi ASCII để thư viện Stegano đọc được
                         encoded_message = base64.b64encode(message.encode('utf-8')).decode('utf-8')
-                        
-                        # Giấu chuỗi Base64 vào ảnh
                         secret = lsb.hide(input_path, encoded_message)
                         secret.save(output_path)
-                        
-                        # Tạo URL để hiển thị/tải về
                         hidden_img_url = url_for('static', filename=f'stego_uploads/{output_filename}')
-                    except Exception as e:
-                        error = f"Lỗi khi giấu tin: {str(e)}"
+                    except Exception as e: error = f"Lỗi: {str(e)}"
 
-        # --- XỬ LÝ GIẢI MÃ (DECODE) ---
         elif action == 'decode':
-            if 'stego_image' not in request.files:
-                error = 'Chưa chọn ảnh cần giải mã!'
+            if 'stego_image' not in request.files: error = 'Chưa chọn ảnh!'
             else:
                 file = request.files['stego_image']
-                if file.filename == '':
-                    error = 'Chưa chọn file!'
+                if file.filename == '': error = 'Chưa chọn file!'
                 else:
-                    # Lưu tạm ảnh upload lên để đọc
                     filename = secure_filename(file.filename)
                     input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     file.save(input_path)
-
                     try:
-                        # Lấy nội dung thô từ ảnh
                         raw_message = lsb.reveal(input_path)
-                        
                         if raw_message:
-                            try:
-                                # --- QUAN TRỌNG: Giải mã Base64 về lại Tiếng Việt ---
-                                revealed_message = base64.b64decode(raw_message).decode('utf-8')
-                            except:
-                                # Nếu giải mã Base64 lỗi (do ảnh cũ không dùng Base64), thì hiển thị nguyên gốc
-                                revealed_message = raw_message
-                        else:
-                            error = "Không tìm thấy tin nhắn nào trong ảnh này!"
-                    except Exception as e:
-                         error = f"Lỗi khi đọc ảnh: {str(e)}"
+                            try: revealed_message = base64.b64decode(raw_message).decode('utf-8')
+                            except: revealed_message = raw_message
+                        else: error = "Không tìm thấy tin nhắn!"
+                    except Exception as e: error = f"Lỗi: {str(e)}"
+    return render_template('steganography.html', hidden_img_url=hidden_img_url, revealed_message=revealed_message, error=error)
 
-    return render_template('steganography.html', 
-                           hidden_img_url=hidden_img_url, 
-                           revealed_message=revealed_message,
-                           error=error)
-
-# 4. GAMIFICATION (CTF Challenges)
 @app.route('/ctf', methods=['GET', 'POST'])
 @login_required
 def ctf():
     challenges = Challenge.query.all()
     solved_list = current_user.solved_challenges.split(',')
-    
     if request.method == 'POST':
         chal_id = request.form.get('chal_id')
         flag_submit = request.form.get('flag').strip()
+        chal = db.session.get(Challenge, int(chal_id))
         
-        chal = Challenge.query.get(int(chal_id))
-        
-        if str(chal.id) in solved_list:
-            flash('Bạn đã giải bài này rồi!', 'info')
+        if str(chal.id) in solved_list: flash('Bạn đã giải bài này rồi!', 'info')
         elif chal.flag == flag_submit:
             current_user.score += chal.points
             current_user.solved_challenges += f"{chal.id},"
@@ -426,12 +529,59 @@ def ctf():
             log_action(f'Solved CTF: {chal.title}')
         else:
             flash('Flag sai rồi, thử lại nhé.', 'incorrect')
-            
         return redirect(url_for('ctf'))
-
     return render_template('ctf.html', challenges=challenges, solved_list=solved_list, score=current_user.score)
 
-# --- OLD MODULES (Giữ nguyên) ---
+@app.route('/threat_intel', methods=['GET', 'POST'])
+@login_required
+def threat_intel():
+    data, error = None, None
+    if request.method == 'POST':
+        ip = request.form.get('ip_address', '').strip()
+        # Validate định dạng IP trước khi gọi API
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError:
+            error = "Địa chỉ IP không hợp lệ! Vui lòng nhập IPv4 hoặc IPv6 đúng định dạng."
+            return render_template('threat_intel.html', data=data, error=error)
+
+        if not ABUSEIPDB_KEY:
+            error = "Chưa cấu hình ABUSEIPDB_KEY trong file .env!"
+            return render_template('threat_intel.html', data=data, error=error)
+
+        try:
+            response = requests.get('https://api.abuseipdb.com/api/v2/check',
+                                    headers={'Accept': 'application/json', 'Key': ABUSEIPDB_KEY},
+                                    params={'ipAddress': ip, 'maxAgeInDays': '90'})
+            if response.status_code == 200: data = response.json()['data']
+            elif response.status_code == 401: error = "Lỗi: API Key không hợp lệ!"
+            elif response.status_code == 429: error = "Hết lượt truy cập API hôm nay."
+            else: error = f"Lỗi HTTP: {response.status_code}"
+        except Exception as e: error = f"Lỗi kết nối: {str(e)}"
+    return render_template('threat_intel.html', data=data, error=error)
+
+@app.route('/ai_phishing', methods=['GET', 'POST'])
+@login_required
+def ai_phishing():
+    result, prob, url_input = None, 0, ""
+    if request.method == 'POST':
+        url_input = request.form.get('url', '').strip()
+        try:
+            if phishing_model is None:
+                flash('Chưa tìm thấy model AI! Hãy chạy train_model.py trước.', 'danger')
+            else:
+                prediction = phishing_model.predict([url_input])[0]
+                prob = round(phishing_model.predict_proba([url_input])[0][1] * 100, 2)
+                if prediction == 1 or prob > 50:
+                    result = "PHISHING (NGUY HIỂM)"
+                    log_action(f'AI Alert: Phishing - {url_input}')
+                else:
+                    result = "SAFE (AN TOÀN)"
+        except Exception as e:
+            result = f"Lỗi AI: {str(e)}"
+    return render_template('ai_phishing.html', result=result, prob=prob, url=url_input)
+
+# Các Lab Khác
 @app.route('/digital_auth', methods=['GET', 'POST'])
 @login_required
 def digital_auth():
@@ -449,7 +599,6 @@ def ecommerce():
     res = None
     if request.method == 'POST':
         cc = request.form.get('cc_number','').replace(' ','')
-        # Simple Luhn
         digits = [int(d) for d in str(cc) if d.isdigit()]
         checksum = sum(digits[-1::-2]) + sum([sum(divmod(d*2,10)) for d in digits[-2::-2]])
         valid = (checksum % 10 == 0) and (len(digits)>12)
@@ -457,342 +606,141 @@ def ecommerce():
         res = {'is_valid': valid, 'enc': Fernet(key).encrypt(f"{cc}".encode()).decode()}
     return render_template('ecommerce.html', result=res)
 
-@app.route('/vulnerability', methods=['GET', 'POST'])
-@login_required
-def vulnerability():
-    res, tgt = [], ""
-    if request.method == 'POST':
-        tgt = request.form.get('target_ip')
-        try:
-            ip = socket.gethostbyname(tgt)
-            for p in [80, 443, 3306]:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(0.5)
-                res.append({'port':p,'status':"OPEN" if s.connect_ex((ip,p))==0 else "CLOSED"})
-                s.close()
-        except: pass
-    return render_template('vulnerability.html', results=res, target=tgt)
-
-@app.route('/malware', methods=['GET', 'POST'])
-@login_required
-def malware():
-    anl = None
-    if request.method == 'POST':
-        f = request.files.get('malware_sample')
-        if f:
-            b = f.read()
-            anl = {'name': f.filename, 'md5': hashlib.md5(b).hexdigest(), 'sha256': hashlib.sha256(b).hexdigest()}
-    return render_template('malware.html', analysis=anl)
-
-@app.route('/system_security')
-@login_required
-def system_security():
-    info = {'os': platform.system(), 'cpu': psutil.cpu_count(), 'ram': f"{round(psutil.virtual_memory().total/1024**3,1)} GB"}
-    return render_template('system_security.html', info=info)
-
-@app.route('/assessment', methods=['GET', 'POST'])
-@login_required
-def assessment():
-    audit = None
-    if request.method == 'POST':
-        p = request.form.get('password_check','')
-        s = sum([1 for r in [r"[A-Z]", r"[0-9]", r"[!@#]"] if re.search(r, p)]) + (1 if len(p)>=8 else 0)
-        audit = {'password': p, 'score': s, 'verdict': "MẠNH" if s==4 else "YẾU"}
-    return render_template('assessment.html', audit=audit)
-
-@app.route('/hmac', methods=['GET', 'POST'])
-@login_required
-def hmac_tool():
-    res = None
-    if request.method == 'POST': res = hmac.new(request.form.get('key').encode(), request.form.get('data').encode(), hashlib.sha256).hexdigest()
-    return render_template('hmac.html', result=res)
-
 @app.route('/pentest_red', methods=['GET', 'POST'])
 @login_required
 def pentest_red():
-    conn = sqlite3.connect(':memory:')
-    conn.cursor().execute("CREATE TABLE u (u TEXT, p TEXT, f TEXT)").execute("INSERT INTO u VALUES ('admin','123','FLAG{SQL_WIN}')")
     res, q = None, ""
-    if request.method == 'POST':
-        i, m = request.form.get('username_input'), request.form.get('method')
-        sql = f"SELECT * FROM u WHERE u = '{i}'" if m == 'unsafe' else "SELECT * FROM u WHERE u = ?"
-        try:
-            cur = conn.cursor()
-            cur.execute(sql) if m == 'unsafe' else cur.execute(sql, (i,))
-            res = cur.fetchall()
-            q = sql
-            if len(res) > 0 and m == 'unsafe': log_action('SQLi Attack')
-        except Exception as e: res = str(e)
+    conn = sqlite3.connect(':memory:')
+    try:
+        conn.cursor().execute("CREATE TABLE u (u TEXT, p TEXT, f TEXT)").execute("INSERT INTO u VALUES ('admin','123','FLAG{SQL_WIN}')")
+        if request.method == 'POST':
+            i, m = request.form.get('username_input'), request.form.get('method')
+            sql = f"SELECT * FROM u WHERE u = '{i}'" if m == 'unsafe' else "SELECT * FROM u WHERE u = ?"
+            try:
+                cur = conn.cursor()
+                cur.execute(sql) if m == 'unsafe' else cur.execute(sql, (i,))
+                res = cur.fetchall()
+                q = sql
+                if len(res) > 0 and m == 'unsafe': log_action('SQLi Attack')
+            except Exception as e: res = str(e)
+    finally:
+        conn.close()  # Đảm bảo luôn đóng connection
     return render_template('pentest_red.html', result=res, query=q)
 
-@app.route('/pentest_blue')
-@login_required
-def pentest_blue():
-    l = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(20).all()
-    c = AuditLog.query.filter(AuditLog.action.contains('Attack')).count()
-    return render_template('pentest_blue.html', logs=l, stats={'total':AuditLog.query.count(),'attacks':c})
-
-# ============================================================
-# THAY THẾ 2 ROUTE CŨ TRONG app.py BẰNG CÁC ROUTE NÀY
-# ============================================================
-
-# ── BLUE TEAM (dữ liệu thật từ DB) ──────────────────────────
 @app.route('/blue_team')
 @login_required
 def blue_team():
-    # Log feed: 30 sự kiện mới nhất
     logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(30).all()
-
-    # Metrics thật
-    total_logs   = AuditLog.query.count()
-    attack_count = AuditLog.query.filter(
-        AuditLog.action.contains('Attack') |
-        AuditLog.action.contains('SQLi')   |
-        AuditLog.action.contains('XSS')    |
-        AuditLog.action.contains('RCE')    |
-        AuditLog.action.contains('Detected')
-    ).count()
-    solve_count  = AuditLog.query.filter(AuditLog.action.contains('Solved')).count()
-    user_count   = User.query.count()
-
-    # Top scorer
-    top = User.query.order_by(User.score.desc()).first()
-    top_user = f"{top.username} ({top.score}pt)" if top else "N/A"
-
     stats = {
-        'total':    total_logs,
-        'attacks':  attack_count,
-        'solves':   solve_count,
-        'users':    user_count,
-        'top_user': top_user,
+        'total': AuditLog.query.count(),
+        'attacks': AuditLog.query.filter(AuditLog.action.contains('Attack') | AuditLog.action.contains('SQLi') | AuditLog.action.contains('Detected')).count(),
+        'solves': AuditLog.query.filter(AuditLog.action.contains('Solved')).count(),
+        'users': User.query.count(),
+        'top_user': getattr(User.query.order_by(User.score.desc()).first(), 'username', 'N/A')
     }
-
     return render_template('blue_team.html', logs=logs, stats=stats)
 
-
-# ── RED TEAM (dữ liệu thật từ DB) ───────────────────────────
 @app.route('/red_team')
 @login_required
 def red_team():
-    # Lấy 10 log SQLi/Attack gần nhất để hiển thị trong terminal
-    attack_logs = AuditLog.query.filter(
-        AuditLog.action.contains('Attack') |
-        AuditLog.action.contains('SQLi')   |
-        AuditLog.action.contains('XSS')    |
-        AuditLog.action.contains('RCE')    |
-        AuditLog.action.contains('Detected')
-    ).order_by(AuditLog.timestamp.desc()).limit(10).all()
-
-    # Metrics cho Attack Surface
-    total_logs    = AuditLog.query.count()
-    attack_count  = AuditLog.query.filter(
-        AuditLog.action.contains('Attack') |
-        AuditLog.action.contains('Detected')
-    ).count()
-    sqli_count    = AuditLog.query.filter(AuditLog.action.contains('SQLi')).count()
-    xss_count     = AuditLog.query.filter(AuditLog.action.contains('XSS')).count()
-    rce_count     = AuditLog.query.filter(AuditLog.action.contains('RCE')).count()
-    phishing_count= AuditLog.query.filter(AuditLog.action.contains('Phishing')).count()
-    user_count    = User.query.count()
-
-    # Tính % cho gauges (clamp 0-100)
-    def pct(a, b):
-        return min(int((a / max(b, 1)) * 100), 100)
-
+    attack_logs = AuditLog.query.filter(AuditLog.action.contains('Attack') | AuditLog.action.contains('Detected')).order_by(AuditLog.timestamp.desc()).limit(10).all()
+    attack_count = AuditLog.query.filter(AuditLog.action.contains('Attack') | AuditLog.action.contains('Detected')).count()
     metrics = {
-        'web_exposure':   min(sqli_count * 20 + xss_count * 15, 100),
-        'network_risk':   min(rce_count * 25 + attack_count * 5, 100),
-        'social_eng':     min(phishing_count * 20, 100),
-        'credential':     min(attack_count * 8, 100),
-        'patch_score':    max(100 - attack_count * 10, 0),
-        'total_attacks':  attack_count,
-        'sqli':           sqli_count,
-        'xss':            xss_count,
-        'rce':            rce_count,
+        'web_exposure': min(attack_count * 20, 100),
+        'network_risk': min(attack_count * 10, 100),
+        'total_attacks': attack_count
     }
-
     return render_template('red_team.html', attack_logs=attack_logs, metrics=metrics)
+
+@app.route('/vulnerability', methods=['GET', 'POST'])
+@login_required
+def vulnerability():
+    results, error, target = None, None, None
+
+    if request.method == 'POST':
+        target = request.form.get('target_ip', '').strip()
+
+        if not target:
+            error = "Vui lòng nhập địa chỉ IP hoặc hostname!"
+            return render_template('vulnerability.html', error=error, target=target)
+
+        # Resolve hostname → IP để hiển thị và scan
+        try:
+            resolved_ip = socket.gethostbyname(target)
+        except socket.gaierror:
+            error = f"Không thể phân giải hostname: '{target}'. Kiểm tra lại địa chỉ."
+            return render_template('vulnerability.html', error=error, target=target)
+
+        COMMON_PORTS = [21, 22, 23, 25, 53, 80, 443, 3306, 5432, 8080, 8443]
+        results = []
+
+        log_action(f'Port Scan: {target} ({resolved_ip})')
+
+        for port in COMMON_PORTS:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                conn_result = sock.connect_ex((resolved_ip, port))
+                sock.close()
+                status = 'OPEN' if conn_result == 0 else 'CLOSED'
+            except Exception:
+                status = 'CLOSED'
+            results.append({'port': port, 'status': status})
+
+    return render_template('vulnerability.html', results=results, error=error, target=target)
+
+@app.route('/malware', methods=['GET', 'POST'])
+@login_required
+def malware(): return render_template('malware.html')
 
 @app.route('/rsa', methods=['GET', 'POST'])
 @login_required
 def rsa_tool(): return render_template('rsa.html')
 
-@app.route('/about')
-def about(): return render_template('about.html')
-
-# --- MODULE AI: PHISHING DETECTOR ---
-@app.route('/ai_phishing', methods=['GET', 'POST'])
+@app.route('/system_security')
 @login_required
-def ai_phishing():
-    result = None
-    prob = 0
-    url_input = ""
-    
-    if request.method == 'POST':
-        url_input = request.form.get('url')
-        try:
-            # Load model đã train
-            if not os.path.exists('phishing_model.pkl'):
-                flash('Chưa tìm thấy model AI! Hãy chạy file train_model.py trước.', 'danger')
-            else:
-                model = joblib.load('phishing_model.pkl')
-                
-                # AI Dự đoán
-                # predict: Trả về 0 (An toàn) hoặc 1 (Độc hại)
-                prediction = model.predict([url_input])[0] 
-                
-                # predict_proba: Trả về xác suất (ví dụ: 0.95 tức là 95% độc hại)
-                probability = model.predict_proba([url_input])[0][1]
-                prob = round(probability * 100, 2)
-                
-                if prediction == 1 or prob > 50:
-                    result = "PHISHING (NGUY HIỂM)"
-                    log_action(f'AI Alert: Phishing URL detected - {url_input}')
-                else:
-                    result = "SAFE (AN TOÀN)"
-                    
-        except Exception as e:
-            result = f"Lỗi AI: {str(e)}"
-            
-    return render_template('ai_phishing.html', result=result, prob=prob, url=url_input)
-# --- MODULE THREAT INTELLIGENCE ---
-@app.route('/threat_intel', methods=['GET', 'POST'])
+def system_security(): return render_template('system_security.html')
+
+@app.route('/assessment', methods=['GET', 'POST'])
 @login_required
-def threat_intel():
-    data = None
-    error = None
+def assessment(): return render_template('assessment.html')
 
-    if request.method == 'POST':
-        ip = request.form.get('ip_address')
+@app.route('/hmac', methods=['GET', 'POST'])
+@login_required
+def hmac_tool(): return render_template('hmac.html')
 
-        # Cấu hình gửi request lên AbuseIPDB
-        url = 'https://api.abuseipdb.com/api/v2/check'
-        querystring = {
-            'ipAddress': ip,
-            'maxAgeInDays': '90' # Kiểm tra lịch sử trong 90 ngày
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Key': ABUSEIPDB_KEY
-        }
 
-        try:
-            response = requests.get(url, headers=headers, params=querystring)
-            if response.status_code == 200:
-                # Lấy dữ liệu thành công
-                result = response.json()
-                data = result['data']
-            elif response.status_code == 401:
-                error = "Lỗi API Key: Vui lòng kiểm tra lại Key trong code."
-            elif response.status_code == 429:
-                error = "Bạn đã hết lượt check miễn phí trong ngày."
-            else:
-                error = f"Lỗi không xác định: {response.status_code}"
-        except Exception as e:
-            error = f"Lỗi kết nối: {str(e)}"
-
-    return render_template('threat_intel.html', data=data, error=error)
-
-# --- QUÊN MẬT KHẨU & KHÔI PHỤC ---
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        
-        if user:
-            token = s.dumps(user.email, salt='reset-password')
-            link = url_for('reset_password', token=token, _external=True)
-            
-            # --- GỬI EMAIL THẬT ---
-            try:
-                msg = Message('Yêu cầu đặt lại mật khẩu - CyberSec Lab', recipients=[email])
-                msg.body = f'''Chào {user.username},
-
-Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản tại Cyber Security Lab.
-Vui lòng bấm vào đường link dưới đây để thay đổi mật khẩu (Link hết hạn sau 5 phút):
-
-{link}
-
-Nếu bạn không yêu cầu điều này, vui lòng bỏ qua email.
-'''
-                mail.send(msg) # Gửi đi
-                flash(f'Đã gửi email khôi phục đến {email}. Hãy kiểm tra hộp thư (cả mục Spam)!', 'info')
-                
-            except Exception as e:
-                print(e) # In lỗi ra terminal nếu gửi thất bại để debug
-                flash('Lỗi gửi email! Vui lòng kiểm tra lại cấu hình.', 'error')
-                
-        else:
-            flash('Email này chưa được đăng ký!', 'error')
-            
-    return render_template('forgot_password.html')
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    try:
-        # Token hết hạn sau 5 phút (300 giây)
-        email = s.loads(token, salt='reset-password', max_age=300)
-    except:
-        flash('Link khôi phục không hợp lệ hoặc đã hết hạn!', 'error')
-        return redirect(url_for('forgot_password'))
-    
-    if request.method == 'POST':
-        password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
-        if user:
-            user.password = generate_password_hash(password, method='pbkdf2:sha256')
-            db.session.commit()
-            flash('Đổi mật khẩu thành công! Hãy đăng nhập lại.', 'success')
-            return redirect(url_for('login'))
-            
-    return render_template('reset_password.html')    
-# --- MAIN: TẠO DATABASE & CHALLENGES ---
+# ==========================================
+# 7. KHỞI TẠO DATABASE
+# ==========================================
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         
-        # --- PHẦN 1: TẠO ADMIN (Kiểm tra độc lập) ---
         if not User.query.filter_by(username='admin').first():
+            admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+            admin_email = os.environ.get('ADMIN_EMAIL', 'admin@gmail.com')
             admin_user = User(
-                email='admin@gmail.com',  
-                username='admin', 
-                password=generate_password_hash('admin123', method='pbkdf2:sha256'), 
+                email=admin_email,
+                username='admin',
+                password=generate_password_hash(admin_password, method='pbkdf2:sha256'),
                 role='admin'
             )
             db.session.add(admin_user)
-            db.session.commit() # Commit ngay sau khi tạo Admin cho chắc
-            print(">>> Admin account created.")
+            db.session.commit()
+            print(f">>> Admin account created (email: {admin_email})")
 
-        # --- PHẦN 2: TẠO CTF CHALLENGES (Kiểm tra độc lập) ---
-        # Code này nằm ngang hàng với if bên trên, không được thụt vào trong
         if Challenge.query.count() == 0:
-            chal1 = Challenge(
-                title="SQL Injection Basic", 
-                description="Tìm Flag ẩn trong module Red Team SQL Lab.", 
-                flag="FLAG{SQL_WIN}", 
-                points=100, 
-                category="Web"
-            )
-            chal2 = Challenge(
-                title="Hidden in Plain Sight", 
-                description="Tìm Flag bị giấu trong source code của trang chủ (Inspect Element).", 
-                flag="FLAG{HTML_MASTER}", 
-                points=50, 
-                category="Misc"
-            )
-            chal3 = Challenge(
-                title="Stego 101", 
-                description="Tải ảnh logo về, có một thông điệp ẩn trong đó.", 
-                flag="FLAG{PIXELS_DONT_LIE}", 
-                points=200, 
-                category="Forensics"
-            )
-            
-            db.session.add_all([chal1, chal2, chal3])
-            db.session.commit() # Commit riêng cho phần Challenge
+            db.session.add_all([
+                Challenge(title="SQL Injection Basic", description="Tìm Flag ẩn trong module Red Team SQL Lab.", flag="FLAG{SQL_WIN}", points=100, category="Web"),
+                Challenge(title="Hidden in Plain Sight", description="Tìm Flag ẩn (Inspect Element).", flag="FLAG{HTML_MASTER}", points=50, category="Misc"),
+                Challenge(title="Stego 101", description="Giấu trong ảnh.", flag="FLAG{PIXELS_DONT_LIE}", points=200, category="Forensics")
+            ])
+            db.session.commit() 
             print(">>> CTF Challenges created.")
 
         print(">>> Database Initialized successfully.")
-if __name__ == '__main__':
-    # Khởi chạy server
-    app.run(debug=True, use_reloader=False)
+        
+    is_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    # Chạy bằng SocketIO (thay vì app.run) để hỗ trợ WebSockets cùng với Flask
+    socketio.run(app, host='0.0.0.0', port=5000, debug=is_debug, use_reloader=False)

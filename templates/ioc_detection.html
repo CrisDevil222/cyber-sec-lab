@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block title %}Nhận Diện IOC & Phân Tích Log Windows Internals — Cyber Security Lab{% endblock %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  :root {
+    --cyan: #00e5ff;
+    --cyan-glow: rgba(0, 229, 255, 0.4);
+    --green: #00ff88;
+    --green-glow: rgba(0, 255, 136, 0.4);
+    --red: #ff2244;
+    --red-glow: rgba(255, 34, 68, 0.4);
+    --bg-dark: rgba(12, 15, 22, 0.92);
+    --border-dim: rgba(255, 255, 255, 0.08);
+  }
+
+  .ioc-wrap {
+    max-width: 1120px;
+    margin: 0 auto 3.5rem;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+  }
+
+  /* BANNER */
+  .ioc-banner {
+    background: var(--bg-dark);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    border-radius: 4px;
+    padding: 1.6rem 2rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.08);
+  }
+  .ioc-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--cyan);
+  }
+  .ioc-tag {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    padding: 2px 8px;
+    background: rgba(0, 229, 255, 0.12);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    color: var(--cyan);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .ioc-score-badge {
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .88rem;
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    color: var(--cyan);
+    padding: .45rem 1rem;
+    border-radius: 4px;
+  }
+
+  /* PROGRESS STATS */
+  .progress-bar-container {
+    background: rgba(5, 7, 10, 0.6);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: .9rem 1.4rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .progress-stat {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .84rem;
+    color: var(--text-dim);
+  }
+  .progress-stat strong {
+    color: #fff;
+  }
+
+  /* INCIDENT CARD */
+  .incident-card {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 1.6rem;
+    margin-bottom: 2rem;
+    position: relative;
+    backdrop-filter: blur(6px);
+    transition: all .25s ease;
+  }
+  .incident-card.solved {
+    border-color: rgba(0, 255, 136, 0.35);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.06);
+  }
+  .inc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+    gap: .8rem;
+  }
+  .inc-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .inc-badges {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+  }
+  .badge-sev {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .65rem;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-sev.CRITICAL { background: rgba(255, 34, 68, 0.15); border: 1px solid var(--red); color: var(--red); }
+  .badge-sev.HIGH { background: rgba(255, 153, 0, 0.15); border: 1px solid #ff9900; color: #ff9900; }
+  .badge-solved {
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .65rem;
+    padding: 2px 8px;
+    font-weight: 700;
+    border-radius: 2px;
+  }
+
+  /* LOG TERMINAL */
+  .log-terminal {
+    background: #040608;
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    border-radius: 4px;
+    padding: 1.1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    color: #88ff88;
+    line-height: 1.65;
+    margin-bottom: 1.4rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+  }
+  .log-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: .8rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .dot.r { background: #ff4444; }
+  .dot.y { background: #ffaa00; }
+  .dot.g { background: #44ff44; }
+  .log-top-bar span {
+    font-size: .68rem;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  /* FORM INPUTS */
+  .input-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .78rem;
+    color: #fff;
+    margin-bottom: .4rem;
+    display: block;
+    text-transform: uppercase;
+  }
+  .inc-select {
+    width: 100%;
+    padding: .75rem 1rem;
+    background: rgba(18, 22, 32, 0.9);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    outline: none;
+    transition: all .2s;
+  }
+  .inc-select:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  }
+  .inc-textarea {
+    width: 100%;
+    padding: .75rem 1rem;
+    background: rgba(18, 22, 32, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: .9rem;
+    resize: vertical;
+    min-height: 75px;
+    margin-bottom: 1.2rem;
+    box-sizing: border-box;
+    outline: none;
+    transition: all .2s;
+  }
+  .inc-textarea:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  }
+  .btn-submit-inc {
+    padding: .65rem 1.6rem;
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .btn-submit-inc:hover {
+    background: var(--cyan);
+    color: #000;
+    box-shadow: 0 0 18px var(--cyan-glow);
+  }
+
+  /* RESULT BOX */
+  .inc-result-box {
+    margin-top: 1.4rem;
+    padding: 1.2rem;
+    border-radius: 4px;
+    animation: fadeIn .3s ease;
+  }
+  .inc-result-box.correct {
+    background: rgba(0, 255, 136, 0.06);
+    border: 1px solid var(--green);
+  }
+  .inc-result-box.wrong {
+    background: rgba(255, 34, 68, 0.06);
+    border: 1px solid var(--red);
+  }
+  .res-hdr {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    margin-bottom: .6rem;
+    text-transform: uppercase;
+  }
+  .inc-result-box.correct .res-hdr { color: var(--green); }
+  .inc-result-box.wrong .res-hdr { color: var(--red); }
+
+  .guidance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  @media(max-width: 780px) {
+    .guidance-grid { grid-template-columns: 1fr; }
+  }
+  .guide-col {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: .9rem 1.1rem;
+    border-radius: 4px;
+  }
+  .guide-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .75rem;
+    font-weight: 700;
+    margin-bottom: .4rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .guide-col.detect .guide-title { color: #ffcc00; }
+  .guide-col.prevent .guide-title { color: var(--cyan); }
+  .guide-body {
+    font-size: .84rem;
+    line-height: 1.6;
+    color: #dde0e8;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+</style>
+
+<div class="ioc-wrap">
+
+  <!-- BANNER TỔNG QUAN -->
+  <div class="ioc-banner">
+    <div class="ioc-score-badge">
+      <i class="fa-solid fa-coins"></i> ĐIỂM: <span id="current-score-val">{{ current_user.score }}</span> pts
+    </div>
+    <span class="ioc-tag"><i class="fa-solid fa-microchip"></i> MODULE 4 · NHẬN DIỆN IOC & PHÂN TÍCH LOG WINDOWS INTERNALS</span>
+    <h1 style="font-size:1.9rem;color:#fff;margin-bottom:.4rem;">
+      <i class="fa-solid fa-file-waveform" style="color:var(--cyan);"></i> Windows Internals Log & IOC Analyzer
+    </h1>
+    <p style="font-size:.92rem;color:var(--text);line-height:1.6;max-width:850px;">
+      Rèn luyện kỹ năng phân tích nhật ký an ninh hệ thống (Sysmon &amp; Windows Security Events). Hãy nhận diện chính xác kỹ thuật tấn công nội vi Windows (Process Injection, Run Key, LSASS Dump, UAC Bypass, AMSI Bypass), map với khung <strong>MITRE ATT&amp;CK</strong> và đối chiếu đề xuất giải pháp phòng thủ chuyên sâu.
+    </p>
+  </div>
+
+  <!-- PROGRESS STATS -->
+  <div class="progress-bar-container">
+    <div class="progress-stat">
+      <i class="fa-solid fa-clipboard-check" style="color:var(--green);"></i> TIẾN ĐỘ GIẢI SỰ CỐ: 
+      <strong id="solved-count-label">{{ solved_count }}</strong> / {{ total_count }} HOÀN THÀNH
+    </div>
+    <div class="progress-stat">
+      <i class="fa-solid fa-award" style="color:#ffcc00;"></i> ĐIỂM TỐI ĐA MODULE: <strong>50 ĐIỂM</strong> (+10 điểm / mỗi sự cố nhận diện đúng)
+    </div>
+  </div>
+
+  <!-- 5 INCIDENT CARDS -->
+  {% for inc in incidents %}
+  <div class="incident-card {% if inc.is_solved %}solved{% endif %}" id="incident-card-{{ inc.data.id }}">
+    
+    <div class="inc-header">
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--cyan);margin-bottom:.2rem;">
+          DANH MỤC: {{ inc.data.category|upper }}
+        </div>
+        <h2 class="inc-title">{{ inc.data.title }}</h2>
+      </div>
+      <div class="inc-badges">
+        <span class="badge-sev {{ inc.data.severity }}">{{ inc.data.severity }}</span>
+        <span class="badge-solved" id="solved-badge-{{ inc.data.id }}" style="{% if not inc.is_solved %}display:none;{% endif %}">
+          <i class="fa-solid fa-check-double"></i> ĐÃ HOÀN THÀNH (+10 PTS)
+        </span>
+      </div>
+    </div>
+
+    <!-- LOG TERMINAL -->
+    <div class="log-terminal">
+      <div class="log-top-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span>LIVE ARTIFACT · EVIDENCE LOG VIEWER</span>
+      </div>
+{{ inc.data.raw_log }}
+    </div>
+
+    <!-- SUBMISSION FORM -->
+    <div class="inc-form-section">
+      <label class="input-label" for="technique-select-{{ inc.data.id }}">
+        (A) Nhận diện kỹ thuật tương ứng theo khung MITRE ATT&amp;CK:
+      </label>
+      <select class="inc-select" id="technique-select-{{ inc.data.id }}">
+        <option value="">-- Chọn kỹ thuật tấn công tương ứng với Log trên --</option>
+        {% for opt in technique_options %}
+        <option value="{{ opt.id }}" {% if inc.user_technique == opt.id %}selected{% endif %}>
+          {{ opt.name }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label class="input-label" for="defense-text-{{ inc.data.id }}">
+        (B) Đề xuất 1 giải pháp phát hiện / phòng chống theo góc nhìn của bạn (tùy chọn):
+      </label>
+      <textarea class="inc-textarea" id="defense-text-{{ inc.data.id }}" placeholder="Nhập đề xuất của bạn (ví dụ: Event ID cần theo dõi, cấu hình Defender ASR, CLM, LSA Protection, AppLocker...)...">{{ inc.user_defense or '' }}</textarea>
+
+      <button class="btn-submit-inc" onclick="submitIoc({{ inc.data.id }})">
+        <i class="fa-solid fa-shield-virus"></i> Nộp Đánh Giá &amp; Đối Chiếu Đáp Án
+      </button>
+    </div>
+
+    <!-- RESULT & GUIDANCE DISPLAY -->
+    <div class="inc-result-box" id="result-box-{{ inc.data.id }}" style="display:none;">
+      <div class="res-hdr" id="res-hdr-{{ inc.data.id }}"></div>
+      <div style="font-size:.9rem;color:#fff;line-height:1.6;margin-bottom:.8rem;" id="res-explanation-{{ inc.data.id }}"></div>
+
+      <div class="guidance-grid">
+        <div class="guide-col detect">
+          <div class="guide-title"><i class="fa-solid fa-radar"></i> Dấu hiệu &amp; Kỹ thuật phát hiện (Detection):</div>
+          <div class="guide-body" id="res-detect-{{ inc.data.id }}"></div>
+        </div>
+        <div class="guide-col prevent">
+          <div class="guide-title"><i class="fa-solid fa-lock"></i> Giải pháp triệt tiêu rủi ro (Hardening / Prevention):</div>
+          <div class="guide-body" id="res-prevent-{{ inc.data.id }}"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {% endfor %}
+
+</div>
+
+<script>
+  const csrfToken = "{{ csrf_token() }}";
+
+  function submitIoc(iocId) {
+    const techSelect = document.getElementById('technique-select-' + iocId);
+    const defenseText = document.getElementById('defense-text-' + iocId);
+    const resultBox = document.getElementById('result-box-' + iocId);
+    const resHdr = document.getElementById('res-hdr-' + iocId);
+    const resExp = document.getElementById('res-explanation-' + iocId);
+    const resDetect = document.getElementById('res-detect-' + iocId);
+    const resPrevent = document.getElementById('res-prevent-' + iocId);
+
+    const technique = techSelect.value;
+    if (!technique) {
+      alert('Vui lòng chọn 1 kỹ thuật tấn công ở mục (A) trước khi nộp.');
+      return;
+    }
+
+    fetch('/ioc_detection/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        ioc_id: iocId,
+        technique: technique,
+        defense_proposal: defenseText.value
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        resultBox.style.display = 'block';
+
+        if (data.correct) {
+          resultBox.className = 'inc-result-box correct';
+          resHdr.innerHTML = `<i class="fa-solid fa-circle-check"></i> CHÍNH XÁC: ${data.technique_name}`;
+          
+          const solvedBadge = document.getElementById('solved-badge-' + iocId);
+          if (solvedBadge) solvedBadge.style.display = 'inline-block';
+          
+          const card = document.getElementById('incident-card-' + iocId);
+          if (card) card.classList.add('solved');
+
+          if (data.points_awarded > 0) {
+            document.getElementById('current-score-val').innerText = data.new_score;
+            // update solved count
+            const label = document.getElementById('solved-count-label');
+            if (label) {
+              let cur = parseInt(label.innerText) || 0;
+              label.innerText = cur + 1;
+            }
+          }
+        } else {
+          resultBox.className = 'inc-result-box wrong';
+          resHdr.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> CHƯA CHÍNH XÁC · ĐÁP ÁN ĐÚNG LÀ: ${data.technique_name}`;
+        }
+
+        resExp.innerText = data.explanation;
+        resDetect.innerText = data.detection_guidance;
+        resPrevent.innerText = data.prevention_guidance;
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        alert(data.message || 'Lỗi xử lý yêu cầu.');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Lỗi kết nối máy chủ.');
+    });
+  }
+</script>
+
+{% endblock %}

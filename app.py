@@ -947,9 +947,9 @@ def seed_knowledge_base():
             QuizQuestion(
                 category='kill_chain',
                 question='Kỹ thuật duy trì hiện diện (Persistence) nào sau đây hoạt động bằng cách ghi giá trị vào Registry để tự kích hoạt cùng phiên đăng nhập người dùng Windows?',
-                options=json.dumps(['Pass-the-Hash', 'Registry Run Keys (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run)', 'DNS Tunneling', 'Direct Syscalls'], ensure_ascii=False),
+                options=json.dumps(['Pass-the-Hash', 'Registry Run Keys (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\\\Run)', 'DNS Tunneling', 'Direct Syscalls'], ensure_ascii=False),
                 correct_index=1,
-                explanation='Registry Run Keys (HKCU hoặc HKLM ...\\CurrentVersion\\Run) là kỹ thuật persistence kinh điển, tự động chạy payload khi người dùng đăng nhập.'
+                explanation='Registry Run Keys (HKCU hoặc HKLM ...\\CurrentVersion\\\\Run) là kỹ thuật persistence kinh điển, tự động chạy payload khi người dùng đăng nhập.'
             ),
             QuizQuestion(
                 category='kill_chain',
@@ -1620,6 +1620,208 @@ def choose_scenario_option():
 def reset_scenario():
     session['scenario_step'] = 1
     return jsonify({'status': 'success', 'message': 'Đã đặt lại kịch bản về bước 1.'})
+
+
+
+# ==========================================
+# MODULE 4: IOC DETECTION (WINDOWS INTERNALS LOG ANALYZER)
+# ==========================================
+IOC_INCIDENTS = [
+    {
+        "id": 1,
+        "title": "Sự cố #01: Vùng nhớ bất thường trên tiến trình hệ thống",
+        "category": "Memory & Thread Execution",
+        "severity": "CRITICAL",
+        "raw_log": r"""[SYSMON EVENT ID 8: CreateRemoteThread Detected]
+UtcTime: 2026-11-01 14:32:05.112
+SourceProcessGuid: {7f9a2b10-1823-64a2-0000-0010c4391200}
+SourceProcessId: 4912
+SourceImage: C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE
+TargetProcessGuid: {7f9a2b10-1820-64a2-0000-0010d8210400}
+TargetProcessId: 2180
+TargetImage: C:\Windows\explorer.exe
+StartAddress: 0x00007FFB34120000 (Allocated as PAGE_EXECUTE_READWRITE / RWX via VirtualAllocEx)
+StartFunction: -
+CallTrace: C:\Windows\SYSTEM32\ntdll.dll+9fb20|C:\Windows\System32\KERNELBASE.dll+2c810""",
+        "correct_technique": "process_injection",
+        "technique_name": "T1055 — Process Injection (VirtualAllocEx + CreateRemoteThread)",
+        "explanation": "Ứng dụng văn phòng OUTLOOK.EXE đã mở handle sang tiến trình người dùng explorer.exe, cấp phát bộ nhớ quyền RWX (Read-Write-Execute) và khởi tạo một Remote Thread để thực thi shellcode ngầm.",
+        "detection_guidance": "Giám sát Sysmon Event ID 8 (CreateRemoteThread) khi SourceImage là ứng dụng văn phòng (Outlook, Word, Excel) hoặc trình duyệt gọi sang explorer.exe hay svchost.exe.",
+        "prevention_guidance": "Bật Microsoft Defender Attack Surface Reduction (ASR) rule 'Block Office applications from injecting code into other processes' và kích hoạt Exploit Protection W^X (DEP / Cấm trang nhớ vừa ghi vừa thực thi)."
+    },
+    {
+        "id": 2,
+        "title": "Sự cố #02: Ghi nhận nhánh khóa Registry khởi động bất thường",
+        "category": "Persistence",
+        "severity": "HIGH",
+        "raw_log": r"""[SYSMON EVENT ID 13: Registry Value Set]
+UtcTime: 2026-11-01 14:38:40.890
+ProcessId: 5824
+Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+TargetObject: \REGISTRY\USER\S-1-5-21-392182910-1001\Software\Microsoft\Windows\CurrentVersion\\Run\EdgeUpdateBroker
+Details: C:\Users\JohnDoe\AppData\Roaming\Microsoft\edge_update_worker.exe --silent --background""",
+        "correct_technique": "persistence_runkey",
+        "technique_name": "T1547.001 — Persistence via Registry Run Key (HKCU/HKLM)",
+        "explanation": "Tiến trình PowerShell thiết lập một giá trị Run Key trong Registry của người dùng (HKCU) trỏ tới file thực thi nằm trong thư mục AppData Roaming nhằm duy trì quyền điều khiển mỗi khi người dùng đăng nhập lại.",
+        "detection_guidance": "Giám sát Sysmon Event ID 12/13 nhắm vào các nhánh HKCU/HKLM\\...\\CurrentVersion\\Run và RunOnce. Đặc biệt cảnh báo khi đường dẫn nhắm vào thư mục người dùng (%AppData%, %LocalAppData%, %Temp%).",
+        "prevention_guidance": "Sử dụng chính sách AppLocker hoặc WDAC (Windows Defender Application Control) chặn thực thi binary (.exe) xuất phát từ thư mục người dùng ghi được (User-Writable Directories)."
+    },
+    {
+        "id": 3,
+        "title": "Sự cố #03: Truy cập trái phép vào tiến trình xác thực danh tính",
+        "category": "Credential Access",
+        "severity": "CRITICAL",
+        "raw_log": r"""[SYSMON EVENT ID 10: ProcessAccess Detected]
+UtcTime: 2026-11-01 14:45:12.430
+SourceImage: C:\Users\\Public\Downloads\debug_tool.exe
+SourceProcessId: 6420
+TargetImage: C:\Windows\System32\lsass.exe
+TargetProcessId: 688
+GrantedAccess: 0x1FFFFF (PROCESS_ALL_ACCESS / VM_READ | VM_WRITE | QUERY_INFORMATION)
+CallTrace: C:\Windows\SYSTEM32\ntdll.dll+a0120|C:\Windows\System32\KERNELBASE.dll+31200|debug_tool.exe+14a2""",
+        "correct_technique": "credential_dumping",
+        "technique_name": "T1003.001 — Credential Dumping (LSASS Memory Read)",
+        "explanation": "Một tiến trình không rõ nguồn gốc từ Users\\Public đã mở handle tới LSASS.exe với toàn quyền PROCESS_ALL_ACCESS (0x1FFFFF), đây là dấu hiệu điển hình của hành vi trích xuất NTLM hash và Kerberos ticket bằng Mimikatz hoặc ProcDump.",
+        "detection_guidance": "Giám sát Sysmon Event ID 10 nhắm vào lsass.exe với quyền truy cập đọc bộ nhớ (PROCESS_VM_READ / 0x1010) từ các tiến trình không thuộc hệ điều hành chuẩn.",
+        "prevention_guidance": "Bật tính năng LSA Protection (RunAsPPL: HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\RunAsPPL = 1) và bật Credential Guard (VBS) để cô lập hoàn toàn không gian bộ nhớ của LSASS khỏi User Mode."
+    },
+    {
+        "id": 4,
+        "title": "Sự cố #04: Tiến trình hệ thống chạy quyền cao không qua kiểm duyệt",
+        "category": "Privilege Escalation",
+        "severity": "HIGH",
+        "raw_log": r"""[WINDOWS SECURITY EVENT ID 4688: Process Creation with Elevated Token]
+UtcTime: 2026-11-01 14:52:18.005
+ProcessId: 7810
+NewProcessName: C:\Windows\System32\cmd.exe
+CommandLine: "C:\Windows\System32\cmd.exe" /c powershell -enc SAB...
+CreatorProcessId: 7792
+ParentProcessName: C:\Windows\System32\fodhelper.exe
+MandatoryLabel: Mandatory Label\High Mandatory Level
+Ghi chú: fodhelper.exe khởi chạy với thuộc tính auto-elevate mà KHÔNG hề xuất hiện hộp thoại UAC Consent Prompt.""",
+        "correct_technique": "uac_bypass",
+        "technique_name": "T1548.002 — UAC Bypass via Elevated Auto-Elevate Binary (fodhelper)",
+        "explanation": "Kẻ tấn công lạm dụng tính năng auto-elevate của tiện ích hệ thống fodhelper.exe thông qua kỹ thuật Registry Hijacking (ms-settings\\Shell\\\Open\\command) để sinh tiến trình con (cmd/powershell) mang quyền High Integrity mà không kích hoạt cửa sổ xác nhận UAC.",
+        "detection_guidance": "Phát hiện khi binary auto-elevated chuẩn của Windows (fodhelper.exe, eventvwr.exe) tạo các tiến trình con lạ như cmd.exe, powershell.exe hoặc rundll32.exe. Giám sát can thiệp vào Registry key HKCU\Software\Classes\\\\ms-settings.",
+        "prevention_guidance": "Cấu hình UAC ở mức 'Always Notify' (mức cao nhất), tước quyền Administrator cục bộ của tài khoản người dùng thường, và thiết lập EDR phát hiện bất thường cha-con (Parent-Child Process Anomaly)."
+    },
+    {
+        "id": 5,
+        "title": "Sự cố #05: Vô hiệu hóa lớp phòng vệ bộ lọc tập lệnh PowerShell",
+        "category": "Defense Evasion",
+        "severity": "CRITICAL",
+        "raw_log": r"""[POWERSHELL SCRIPT BLOCK LOGGING - EVENT ID 4104]
+UtcTime: 2026-11-01 14:58:30.220
+ScriptBlockId: {d89f1a23-4412-4f10-92a1-89a1023bc499}
+ScriptText: 
+  $amsiDll = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiSession','NonPublic,Static');
+  $buf = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(6);
+  [System.Runtime.InteropServices.Marshal]::Copy([byte[]](0xB8,0x57,0x00,0x07,0x80,0xC3), 0, $buf, 6);
+  # Patch opcode: mov eax, 0x80070057; ret (AMSI_RESULT_CLEAN)
+Hiện tượng: Hàm AmsiScanBuffer trong bộ nhớ liên tục trả về S_OK (0) bất kể script nạp tải độc hại.""",
+        "correct_technique": "amsi_bypass",
+        "technique_name": "T1562.001 — Impair Defenses: AMSI In-Memory Patching",
+        "explanation": "Kẻ tấn công sử dụng kỹ thuật Reflection trong bộ nhớ để định vị con trỏ hàm AmsiScanBuffer của amsi.dll và ghi đè (patch) vài byte nhị phân đầu tiên (mov eax, ...; ret) để ép AMSI luôn trả về trạng thái script an toàn.",
+        "detection_guidance": "Giám sát PowerShell ScriptBlock Logging (Event ID 4104) để bắt các từ khóa AmsiUtils, amsiSession, patch offset. Giám sát gọi VirtualProtect đổi thuộc tính trang nhớ amsi.dll sang PAGE_EXECUTE_READWRITE.",
+        "prevention_guidance": "Kích hoạt PowerShell Constrained Language Mode (CLM) kết hợp AppLocker/WDAC nhằm vô hiệu hóa hoàn toàn cơ chế gọi trực tiếp con trỏ API (Reflection và Win32 P-Invoke) từ ngữ cảnh người dùng."
+    }
+]
+
+TECHNIQUE_OPTIONS = [
+    {"id": "process_injection", "name": "T1055 — Process Injection (VirtualAllocEx + CreateRemoteThread)"},
+    {"id": "persistence_runkey", "name": "T1547.001 — Persistence via Registry Run Key (HKCU/HKLM)"},
+    {"id": "credential_dumping", "name": "T1003.001 — Credential Dumping (LSASS Memory Read)"},
+    {"id": "uac_bypass", "name": "T1548.002 — UAC Bypass via Elevated Binary (fodhelper)"},
+    {"id": "amsi_bypass", "name": "T1562.001 — Impair Defenses: AMSI In-Memory Patching"},
+    {"id": "dns_tunneling", "name": "T1071.004 — DNS Tunneling Protocol Impairment"},
+    {"id": "dll_sideloading", "name": "T1574.002 — DLL Side-Loading Execution"},
+    {"id": "pass_the_hash", "name": "T1550.002 — Pass the Hash / Ticket Abuse"}
+]
+
+
+@app.route('/ioc_detection')
+@login_required
+def ioc_detection():
+    user_progress = {p.ioc_id: p for p in IocProgress.query.filter_by(user_id=current_user.id).all()}
+    
+    incidents_view = []
+    solved_count = 0
+    for inc in IOC_INCIDENTS:
+        prog = user_progress.get(inc['id'])
+        is_solved = (prog is not None and prog.is_correct)
+        if is_solved:
+            solved_count += 1
+            
+        incidents_view.append({
+            'data': inc,
+            'is_solved': is_solved,
+            'user_technique': prog.submitted_technique if prog else None,
+            'user_defense': prog.submitted_defense if prog else None
+        })
+
+    return render_template('ioc_detection.html',
+                           incidents=incidents_view,
+                           technique_options=TECHNIQUE_OPTIONS,
+                           solved_count=solved_count,
+                           total_count=len(IOC_INCIDENTS))
+
+
+@app.route('/ioc_detection/submit', methods=['POST'])
+@login_required
+def submit_ioc_detection():
+    data = request.get_json(silent=True) or request.form
+    try:
+        ioc_id = int(data.get('ioc_id', 0))
+    except (TypeError, ValueError):
+        ioc_id = 0
+        
+    technique = str(data.get('technique', '')).strip().lower()
+    defense_proposal = str(data.get('defense_proposal', '')).strip()
+
+    incident = next((i for i in IOC_INCIDENTS if i['id'] == ioc_id), None)
+    if not incident:
+        return jsonify({'status': 'error', 'message': 'Không tìm thấy sự cố log này.'}), 404
+
+    is_correct = (technique == incident['correct_technique'])
+    points_awarded = 0
+
+    prog = IocProgress.query.filter_by(user_id=current_user.id, ioc_id=ioc_id).first()
+    is_first_correct = False
+    if not prog:
+        is_first_correct = is_correct
+        prog = IocProgress(
+            user_id=current_user.id,
+            ioc_id=ioc_id,
+            submitted_technique=technique,
+            submitted_defense=defense_proposal,
+            is_correct=is_correct
+        )
+        db.session.add(prog)
+    else:
+        if is_correct and not prog.is_correct:
+            is_first_correct = True
+        prog.submitted_technique = technique
+        prog.submitted_defense = defense_proposal
+        prog.is_correct = is_correct or prog.is_correct
+        prog.timestamp = datetime.utcnow()
+
+    if is_first_correct:
+        current_user.score += 10
+        points_awarded = 10
+        log_action(f"IOC Detection: {incident['technique_name'].split('—')[0].strip()}")
+
+    db.session.commit()
+
+    return jsonify({
+        'status': 'success',
+        'correct': is_correct,
+        'points_awarded': points_awarded,
+        'new_score': current_user.score,
+        'explanation': incident['explanation'],
+        'technique_name': incident['technique_name'],
+        'detection_guidance': incident['detection_guidance'],
+        'prevention_guidance': incident['prevention_guidance']
+    })
 
 
 if __name__ == '__main__':

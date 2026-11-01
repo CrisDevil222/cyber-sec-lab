@@ -1,0 +1,640 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Base — Cơ sở Kiến thức Red Team & Windows Internals{% endblock %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  .kb-wrap {
+    max-width: 1150px;
+    margin: 0 auto 3rem;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+  }
+  .kb-banner {
+    background: rgba(15, 17, 24, 0.88);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 4px;
+    padding: 1.6rem 2rem;
+    margin-bottom: 1.8rem;
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+  }
+  .kb-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--c);
+  }
+  .badge-kb {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .65rem;
+    padding: 2px 8px;
+    background: rgba(0, 229, 255, 0.12);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    color: var(--c);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .score-badge {
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .85rem;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.35);
+    color: #00ff88;
+    padding: .4rem .9rem;
+    border-radius: 4px;
+  }
+
+  /* ACCORDION */
+  .accordion-item {
+    background: rgba(10, 14, 20, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    margin-bottom: 1.2rem;
+    overflow: hidden;
+    transition: border-color .3s;
+  }
+  .accordion-item.active {
+    border-color: rgba(0, 229, 255, 0.35);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.05);
+  }
+  .accordion-header {
+    padding: 1.2rem 1.6rem;
+    background: rgba(15, 20, 28, 0.6);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background .2s;
+  }
+  .accordion-header:hover {
+    background: rgba(0, 229, 255, 0.05);
+  }
+  .accordion-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+  }
+  .accordion-icon {
+    color: var(--c);
+    font-size: 1rem;
+    transition: transform .3s ease;
+  }
+  .accordion-item.active .accordion-icon {
+    transform: rotate(180deg);
+  }
+  .accordion-content {
+    display: none;
+    padding: 1.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .accordion-item.active .accordion-content {
+    display: block;
+  }
+
+  /* THEORY CARDS */
+  .theory-card {
+    background: rgba(0, 0, 0, 0.35);
+    border-left: 3px solid var(--c);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    font-size: .88rem;
+    line-height: 1.65;
+  }
+  .theory-card.warn {
+    border-left-color: #ffaa00;
+  }
+  .theory-card.crit {
+    border-left-color: var(--c2);
+  }
+  .stage-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--c);
+    margin-bottom: .3rem;
+    display: block;
+    text-transform: uppercase;
+  }
+
+  /* DIAGRAM / FLOW */
+  .flow-box {
+    background: #05070a;
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    border-radius: 4px;
+    padding: 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    color: #88ff88;
+    margin: .9rem 0;
+    overflow-x: auto;
+  }
+
+  /* QUIZ STYLES */
+  .quiz-container {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px dashed rgba(0, 229, 255, 0.2);
+  }
+  .quiz-header {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: 1.2rem;
+    color: #00e5ff;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .question-block {
+    background: rgba(15, 20, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 4px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .question-block.solved {
+    border-color: rgba(0, 255, 136, 0.35);
+    background: rgba(0, 255, 136, 0.02);
+  }
+  .q-title {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: .8rem;
+    line-height: 1.5;
+  }
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+  .option-label {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: .65rem .9rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: .84rem;
+    transition: all .2s;
+  }
+  .option-label:hover {
+    border-color: rgba(0, 229, 255, 0.3);
+    background: rgba(0, 229, 255, 0.05);
+  }
+  .option-label input[type="radio"] {
+    accent-color: var(--c);
+  }
+  .btn-submit-q {
+    margin-top: .8rem;
+    padding: .5rem 1.2rem;
+    font-size: .78rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--c), var(--c-dim));
+    color: #06080b;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+  }
+  .btn-submit-q:hover {
+    filter: brightness(1.2);
+  }
+  .q-feedback {
+    margin-top: .8rem;
+    padding: .75rem;
+    border-radius: 3px;
+    font-size: .82rem;
+    line-height: 1.55;
+    display: none;
+  }
+  .q-feedback.success {
+    display: block;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #8fffc5;
+  }
+  .q-feedback.error {
+    display: block;
+    background: rgba(255, 45, 85, 0.1);
+    border: 1px solid rgba(255, 45, 85, 0.4);
+    color: #ff9aaa;
+  }
+  .tag-solved {
+    display: inline-block;
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .65rem;
+    padding: 2px 6px;
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #00ff88;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+</style>
+
+<div class="kb-wrap">
+
+  <!-- BANNER TỔNG QUAN -->
+  <div class="kb-banner">
+    <div class="score-badge">
+      <i class="fa-solid fa-coins"></i> ĐIỂM TÍCH LŨY: <span id="current-score-val">{{ current_user.score }}</span> pts
+    </div>
+    <span class="badge-kb"><i class="fa-solid fa-book-bookmark"></i> MODULE 1 · LÝ THUYẾT NỀN TẢNG & KIỂM TRA NHANH</span>
+    <h1 style="font-size:1.85rem;color:#fff;margin-bottom:.4rem;">
+      <i class="fa-solid fa-brain" style="color:var(--c);"></i> Red Team & Windows Internals Knowledge Base
+    </h1>
+    <p style="font-size:.9rem;color:var(--text);line-height:1.6;max-width:850px;">
+      Hệ thống tra cứu kiến thức chuyên sâu về <strong>Cyber Kill Chain 7 giai đoạn</strong>, <strong>cơ chế nội tại Windows (Windows Internals, API flow, Memory Injection)</strong> và <strong>Dịch vụ mạng Active Directory</strong>. Sau mỗi phần, hoàn thành các câu hỏi trắc nghiệm để củng cố kiến thức và nhận điểm thưởng vào bảng xếp hạng!
+    </p>
+  </div>
+
+  <!-- ACCORDION SECTION 1: RED TEAM KILL CHAIN -->
+  <div class="accordion-item active">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      <div class="accordion-title">
+        <i class="fa-solid fa-crosshairs" style="color:var(--c2);"></i>
+        <span>Mục 1: Cyber Kill Chain — 7 Giai đoạn Tấn công Toàn diện</span>
+      </div>
+      <i class="fa-solid fa-chevron-down accordion-icon"></i>
+    </div>
+    <div class="accordion-content">
+      
+      <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-bottom:1.2rem;">
+        Mô hình <strong>Cyber Kill Chain</strong> (chuỗi tiêu diệt mạng) chuẩn hóa vòng đời của một chiến dịch tấn công có chủ đích từ lúc bắt đầu thám thính đến khi đạt mục tiêu nghiệp vụ. Việc nắm vững các giai đoạn giúp Red Team chọn kỹ thuật phù hợp và giúp Blue Team phát hiện dấu hiệu bất thường sớm nhất có thể.
+      </p>
+
+      <div class="theory-card">
+        <span class="stage-badge">Giai đoạn 01 · Reconnaissance (Trinh sát)</span>
+        <strong>Mục tiêu:</strong> Thu thập thông tin tình báo về hạ tầng, con người và công nghệ của đối tượng.<br>
+        <strong>Kỹ thuật:</strong> Tình báo nguồn mở (OSINT) qua LinkedIn, GitHub, chứng chỉ SSL (crt.sh); tra cứu DNS; quét mạng dò cổng mở (Nmap, Masscan); lập bản đồ bề mặt tấn công bên ngoài (External Attack Surface).
+      </div>
+
+      <div class="theory-card">
+        <span class="stage-badge">Giai đoạn 02 · Weaponization & Delivery (Vũ khí hóa & Phân phối)</span>
+        <strong>Mục tiêu:</strong> Đóng gói mã độc kết hợp với tệp tin mồi (lure) và chuyển giao tới mục tiêu.<br>
+        <strong>Kỹ thuật:</strong> Nhúng macro VBA vào tài liệu văn phòng, tạo tệp LNK shortcut độc hại, ISO smuggling; phân phối qua Spear-phishing email hoặc Drive-by download có kiểm soát theo Rules of Engagement (RoE).
+      </div>
+
+      <div class="theory-card warn">
+        <span class="stage-badge">Giai đoạn 03 · Exploitation & Initial Access (Khai thác & Đột nhập)</span>
+        <strong>Mục tiêu:</strong> Kích hoạt mã thực thi trên máy nạn nhân để giành quyền truy cập ban đầu (Initial Foothold).<br>
+        <strong>Kỹ thuật:</strong> Khai thác lỗ hổng phần mềm đã biết (1-day / N-day) trên Web/VPN (như SQL Injection, Remote Code Execution - RCE), hoặc lợi dụng sơ hở cấu hình và xác thực yếu.
+      </div>
+
+      <div class="theory-card warn">
+        <span class="stage-badge">Giai đoạn 04 · Persistence (Duy trì hiện diện)</span>
+        <strong>Mục tiêu:</strong> Giữ quyền kết nối nếu máy chủ khởi động lại hoặc tài khoản người dùng đăng xuất.<br>
+        <strong>Kỹ thuật:</strong> Ghi khóa Registry Run Keys (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>), thiết lập Windows Scheduled Tasks, tạo Windows Services độc hại hoặc WMI Event Subscriptions.
+      </div>
+
+      <div class="theory-card">
+        <span class="stage-badge">Giai đoạn 05 · Command & Control (C&C / C2)</span>
+        <strong>Mục tiêu:</strong> Thiết lập kênh liên lạc bí mật giữa máy chủ chỉ huy của Red Team và máy chủ nạn nhân.<br>
+        <strong>Kỹ thuật:</strong> Dùng framework hiện đại (Cobalt Strike, Sliver, Havoc); ngụy trang lưu lượng qua HTTPS (cổng 443), WebSockets hoặc <strong>DNS Tunneling</strong> để vượt qua tường lửa egress chỉ mở cổng 53.
+      </div>
+
+      <div class="theory-card crit">
+        <span class="stage-badge">Giai đoạn 06 · Privilege Escalation & Lateral Movement (Leo thang & Di chuyển ngang)</span>
+        <strong>Mục tiêu:</strong> Nâng quyền lên SYSTEM/Domain Admin và mở rộng phạm vi kiểm soát sang các máy chủ khác.<br>
+        <strong>Kỹ thuật:</strong> Trích xuất hash mật khẩu hoặc Kerberos ticket từ tiến trình LSASS bằng Mimikatz; xác thực từ xa bằng kỹ thuật <strong>Pass-the-Hash (PtH)</strong>; thiết lập tunnel SOCKS5 để bắc cầu mạng (Pivoting).
+      </div>
+
+      <div class="theory-card crit">
+        <span class="stage-badge">Giai đoạn 07 · Actions on Objectives (Đạt mục tiêu tối hậu)</span>
+        <strong>Mục tiêu:</strong> Thực thi mục tiêu thỏa thuận trong hợp đồng (thu thập dữ liệu Crown Jewels, mô phỏng ransomware).<br>
+        <strong>Kỹ thuật:</strong> Đóng gói và trích xuất dữ liệu (Exfiltration) qua kênh mã hóa; ghi lại mốc thời gian (timeline) chi tiết để bàn giao cho Blue Team đối chiếu khả năng phát hiện (Purple Teaming).
+      </div>
+
+      <!-- QUIZ MỤC 1 -->
+      <div class="quiz-container">
+        <div class="quiz-header">
+          <i class="fa-solid fa-circle-question"></i>
+          <span>Kiểm tra kiến thức Mục 1: Cyber Kill Chain (+10 điểm / câu đúng)</span>
+        </div>
+
+        {% for q in categorized.kill_chain %}
+        <div class="question-block {% if q.id in solved_ids %}solved{% endif %}" id="q-block-{{ q.id }}">
+          {% if q.id in solved_ids %}
+            <span class="tag-solved"><i class="fa-solid fa-check"></i> Đã hoàn thành (+10 pts)</span>
+          {% endif %}
+          <div class="q-title">Câu {{ loop.index }}: {{ q.question }}</div>
+          
+          <form onsubmit="submitQuestion(event, {{ q.id }})">
+            <input type="hidden" name="question_id" value="{{ q.id }}">
+            <div class="options-grid">
+              {% for opt in q.parsed_options %}
+              <label class="option-label">
+                <input type="radio" name="chosen_index" value="{{ loop.index0 }}" required {% if q.id in solved_ids %}disabled{% endif %}>
+                <span>{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if q.id not in solved_ids %}
+            <button type="submit" class="btn-submit-q"><i class="fa-solid fa-paper-plane"></i> Gửi đáp án</button>
+            {% endif %}
+          </form>
+
+          <div class="q-feedback {% if q.id in solved_ids %}success{% endif %}" id="feedback-{{ q.id }}">
+            {% if q.id in solved_ids %}
+              <strong>Giải thích:</strong> {{ q.explanation }}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ACCORDION SECTION 2: WINDOWS INTERNALS -->
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      <div class="accordion-title">
+        <i class="fa-solid fa-microchip" style="color:#00ff88;"></i>
+        <span>Mục 2: Windows Internals — Kiến trúc, Bộ nhớ & Lách EDR</span>
+      </div>
+      <i class="fa-solid fa-chevron-down accordion-icon"></i>
+    </div>
+    <div class="accordion-content">
+      
+      <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-bottom:1.2rem;">
+        Nắm vững kiến trúc hệ điều hành Windows là nền tảng cốt lõi giúp phân tích hành vi mã độc, kiểm thử xâm nhập chuyên sâu và xây dựng luật giám sát chính xác cho các giải pháp EDR (Endpoint Detection and Response).
+      </p>
+
+      <div class="theory-card">
+        <span class="stage-badge">01 · Phân cấp User Mode (Ring 3) vs Kernel Mode (Ring 0)</span>
+        CPU kiến trúc x86/x64 phân chia mức đặc quyền bảo vệ:<br>
+        • <strong>User Mode (Ring 3):</strong> Nơi các ứng dụng thông thường (Notepad, Chrome, PowerShell) chạy trong không gian địa chỉ ảo cô lập; không thể truy cập trực tiếp vào phần cứng vật lý.<br>
+        • <strong>Kernel Mode (Ring 0):</strong> Nơi nhân hệ điều hành (<code>ntoskrnl.exe</code>) và các trình điều khiển phần cứng (drivers) thực thi với toàn quyền truy cập bộ nhớ và CPU.
+      </div>
+
+      <div class="flow-box">
+        // LUỒNG GỌI WINDOWS API TỪ USER MODE XUỐNG KERNEL MODE:<br>
+        [Application Code] <br>
+        &nbsp;&nbsp;&darr; gọi hàm Win32 API cấp cao (OpenProcess, VirtualAlloc...)<br>
+        [kernel32.dll / KernelBase.dll] <br>
+        &nbsp;&nbsp;&darr; chuyển tiếp sang Native API (NtOpenProcess, NtAllocateVirtualMemory...)<br>
+        [ntdll.dll] <span style="color:#ffcc00;">&lt;-- ĐÂY LÀ NƠI EDR ĐẶT INLINE HOOKS ĐỂ THEO DÕI</span><br>
+        &nbsp;&nbsp;&darr; nạp mã Syscall Number vào thanh ghi EAX và gọi lệnh CPU `syscall`<br>
+        [Kiến trúc Chuyển đổi Ngữ cảnh CPU (Syscall Dispatcher)]<br>
+        &nbsp;&nbsp;&darr; nhảy xuống Ring 0<br>
+        [ntoskrnl.exe - Kernel Mode] &rarr; [Hardware Execution]
+      </div>
+
+      <div class="theory-card">
+        <span class="stage-badge">02 · PEB (Process Environment Block)</span>
+        PEB là cấu trúc dữ liệu quan trọng nằm trong không gian địa chỉ User Mode của mỗi tiến trình. Nó chứa danh sách các thư viện DLL đã nạp (InLoadOrderModuleList), tham số dòng lệnh khởi chạy (CommandLine), cờ phát hiện bị gỡ lỗi (BeingDebugged). Các kỹ thuật anti-debug và lách giám sát thường đọc hoặc thao tác trực tiếp trên PEB mà không cần gọi API.
+      </div>
+
+      <div class="theory-card warn">
+        <span class="stage-badge">03 · Kỹ thuật Process Injection kinh điển</span>
+        Để ẩn giấu hành vi độc hại dưới vỏ bọc một tiến trình hợp lệ của Windows (như <code>explorer.exe</code>, <code>svchost.exe</code>), kỹ thuật tiêm mã kinh điển phối hợp 3 API tuần tự:<br>
+        1. <code>VirtualAllocEx</code>: Cấp phát một vùng nhớ mới trong tiến trình đích với quyền đọc, ghi, thực thi (PAGE_EXECUTE_READWRITE - RWX).<br>
+        2. <code>WriteProcessMemory</code>: Ghi nội dung mã máy (shellcode) vào vùng nhớ vừa cấp phát.<br>
+        3. <code>CreateRemoteThread</code>: Yêu cầu hệ điều hành tạo một luồng thực thi mới trỏ tới địa chỉ shellcode trong tiến trình đích.
+      </div>
+
+      <div class="theory-card warn">
+        <span class="stage-badge">04 · UAC Bypass (User Account Control Bypass)</span>
+        UAC là cơ chế phân quyền bảo vệ tài khoản quản trị. Tuy nhiên, một số tệp tin nhị phân chuẩn của Windows có chứng chỉ số của Microsoft được cấu hình cờ <code>autoElevate = true</code> (như <code>fodhelper.exe</code>, <code>eventvwr.exe</code>). Kẻ tấn công có thể ghi đè khóa Registry tương ứng (như <code>HKCU\Software\Classes\ms-settings\Shell\Open\command</code>) để khi binary này tự động nâng quyền lên High Integrity, nó sẽ kích hoạt payload mà không hề làm xuất hiện hộp thoại UAC Prompt yêu cầu người dùng xác nhận.
+      </div>
+
+      <div class="theory-card crit">
+        <span class="stage-badge">05 · AMSI (Antimalware Scan Interface) & Kỹ thuật In-Memory Patch</span>
+        AMSI là giao diện tích hợp sâu trong Windows giúp phần mềm diệt virus kiểm tra nội dung các đoạn mã script (PowerShell, VBScript, Office Macros) ngay trước khi thực thi. Kỹ thuật lách AMSI phổ biến trong nghiên cứu bảo mật là <strong>AMSI Memory Patching</strong>: mở quyền ghi (PAGE_EXECUTE_READWRITE) vào hàm <code>AmsiScanBuffer</code> trong thư viện <code>amsi.dll</code> của tiến trình PowerShell và ghi đè các byte lệnh đầu tiên thành <code>xor eax, eax; ret</code> (mã kết quả 0 - AMSI_RESULT_CLEAN). Khi đó mọi script đều được báo cáo là an toàn.
+      </div>
+
+      <div class="theory-card crit">
+        <span class="stage-badge">06 · LSASS & Credential Dumping</span>
+        Tiến trình <code>lsass.exe</code> (Local Security Authority Subsystem Service) chịu trách nhiệm thực thi chính sách an ninh và quản lý đăng nhập trên Windows. LSASS lưu giữ NTLM hash, mã phiên Kerberos ticket và thông tin đăng nhập trong bộ nhớ RAM. Các công cụ như Mimikatz hay ProcDump cố gắng mở handle có quyền đọc bộ nhớ LSASS để trích xuất hash phục vụ di chuyển ngang. Biện pháp phòng vệ chuẩn là bật <strong>LSA Protection (RunAsPPL)</strong> và <strong>Credential Guard (ảo hóa VBS)</strong>.
+      </div>
+
+      <div class="theory-card">
+        <span class="stage-badge">07 · EDR Hooks & Kỹ thuật Direct Syscalls</span>
+        Phần mềm EDR thường can thiệp vào tiến trình ở User Mode bằng cách đặt các lệnh nhảy (Inline Hooks: <code>jmp edr_sensor.dll</code>) tại các hàm Native API nhạy cảm trong <code>ntdll.dll</code> để ghi nhận và chặn các hành vi nguy hiểm. 
+        Để vượt qua cơ chế này, kỹ thuật <strong>Direct Syscalls</strong> được nghiên cứu: chương trình tự định nghĩa mã Assembly chứa số hiệu ngắt (Syscall ID) và gọi trực tiếp lệnh <code>syscall</code>, bỏ qua hoàn toàn các hàm bị cài cắm hook trong <code>ntdll.dll</code>.
+      </div>
+
+      <!-- QUIZ MỤC 2 -->
+      <div class="quiz-container">
+        <div class="quiz-header">
+          <i class="fa-solid fa-circle-question"></i>
+          <span>Kiểm tra kiến thức Mục 2: Windows Internals (+10 điểm / câu đúng)</span>
+        </div>
+
+        {% for q in categorized.windows_internals %}
+        <div class="question-block {% if q.id in solved_ids %}solved{% endif %}" id="q-block-{{ q.id }}">
+          {% if q.id in solved_ids %}
+            <span class="tag-solved"><i class="fa-solid fa-check"></i> Đã hoàn thành (+10 pts)</span>
+          {% endif %}
+          <div class="q-title">Câu {{ loop.index }}: {{ q.question }}</div>
+          
+          <form onsubmit="submitQuestion(event, {{ q.id }})">
+            <input type="hidden" name="question_id" value="{{ q.id }}">
+            <div class="options-grid">
+              {% for opt in q.parsed_options %}
+              <label class="option-label">
+                <input type="radio" name="chosen_index" value="{{ loop.index0 }}" required {% if q.id in solved_ids %}disabled{% endif %}>
+                <span>{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if q.id not in solved_ids %}
+            <button type="submit" class="btn-submit-q"><i class="fa-solid fa-paper-plane"></i> Gửi đáp án</button>
+            {% endif %}
+          </form>
+
+          <div class="q-feedback {% if q.id in solved_ids %}success{% endif %}" id="feedback-{{ q.id }}">
+            {% if q.id in solved_ids %}
+              <strong>Giải thích:</strong> {{ q.explanation }}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ACCORDION SECTION 3: ACTIVE DIRECTORY & NETWORK SERVICES -->
+  <div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+      <div class="accordion-title">
+        <i class="fa-solid fa-network-wired" style="color:var(--c4);"></i>
+        <span>Mục 3: Active Directory & Dịch vụ Mạng Cốt lõi</span>
+      </div>
+      <i class="fa-solid fa-chevron-down accordion-icon"></i>
+    </div>
+    <div class="accordion-content">
+      
+      <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-bottom:1.2rem;">
+        Trong các doanh nghiệp, Active Directory và các giao thức mạng tầng thấp (DHCP, DNS, SOCKS5) là xương sống vận hành. Hiểu rõ các giao thức này giúp xác định cấu hình sai sót và triển khai các kỹ thuật phòng thủ mạng chặt chẽ.
+      </p>
+
+      <div class="theory-card">
+        <span class="stage-badge">01 · Active Directory & Quản lý Miền (Domain Services)</span>
+        • <strong>Giao thức Kerberos (Port 88):</strong> Cơ chế xác thực mặc định của Active Directory dựa trên vé (Ticket Granting Ticket - TGT và Service Ticket - TGS). Kẻ tấn công thường nhắm vào Kerberoasting (trích xuất vé SPN của tài khoản dịch vụ để bẻ khóa offline).<br>
+        • <strong>Giao thức LDAP / LDAPS (Port 389 / 636):</strong> Dùng để truy vấn cây thư mục người dùng, máy tính, chính sách nhóm GPO.<br>
+        • <strong>Tệp tin <code>ntds.dit</code>:</strong> Cơ sở dữ liệu chính của Active Directory lưu tại <code>%SystemRoot%\NTDS\ntds.dit</code>. Đây là mục tiêu quan trọng nhất vì nó chứa toàn bộ hash mật khẩu của mọi tài khoản trong Domain.
+      </div>
+
+      <div class="theory-card warn">
+        <span class="stage-badge">02 · Giao thức DHCP (Port 67/68) & Quy trình DORA</span>
+        Quy trình 4 bước cấp phát IP tự động:<br>
+        1. <strong>Discover:</strong> Client gửi gói tin broadcast (255.255.255.255:67) tìm kiếm máy chủ DHCP trong mạng LAN.<br>
+        2. <strong>Offer:</strong> Máy chủ DHCP phản hồi gói tin đề xuất địa chỉ IP (Your IP Address - YIAddr) cùng thông số mạng.<br>
+        3. <strong>Request:</strong> Client phát sóng gói tin xác nhận chọn cấu hình IP từ máy chủ DHCP vừa đề xuất.<br>
+        4. <strong>Acknowledge (ACK):</strong> Máy chủ gửi gói tin chốt hợp đồng cấp phát (Lease Time), cung cấp Default Gateway và DNS Server.<br>
+        <div style="margin-top:.6rem;font-size:.82rem;color:#ffcc44;">
+          ⚠️ <strong>Rủi ro tấn công:</strong> Tấn công <em>DHCP Starvation</em> gửi hàng loạt MAC ảo làm cạn kiệt dải IP; sau đó dựng <em>Rogue DHCP Server</em> để cấp phát Default Gateway và DNS giả mạo nhằm thực hiện tấn công Man-in-the-Middle (MitM).<br>
+          🛡️ <strong>Biện pháp phòng thủ:</strong> Cấu hình <strong>DHCP Snooping</strong> trên Switch Layer 2: chỉ cho phép cổng kết nối tới DHCP server hợp lệ (Trusted Port) gửi các gói tin DHCP Offer/ACK.
+        </div>
+      </div>
+
+      <div class="theory-card">
+        <span class="stage-badge">03 · Giao thức DNS (Port 53) & DNS Tunneling</span>
+        • <strong>DNS Transport:</strong> Sử dụng UDP cổng 53 cho các truy vấn phân giải tên miền thông thường để đảm bảo tốc độ cao; sử dụng TCP cổng 53 khi kích thước phản hồi vượt quá 512 bytes hoặc cho thao tác đồng bộ vùng DNS (Zone Transfer - AXFR).<br>
+        • <strong>Kỹ thuật DNS Tunneling:</strong> Vì hầu như mọi mạng doanh nghiệp đều cho phép truy vấn DNS ra Internet, kẻ tấn công mã hóa dữ liệu vào các subdomain truy vấn (ví dụ: <code>a8f9c102.c2.attacker.com</code>). Máy chủ DNS Authoritative của kẻ tấn công nhận truy vấn, giải mã và phản hồi dữ liệu mã hóa qua bản ghi TXT/NULL, tạo nên một đường hầm truyền dữ liệu bí mật qua mặt tường lửa.
+      </div>
+
+      <div class="theory-card crit">
+        <span class="stage-badge">04 · SOCKS5 Proxy (Port 1080) & Kỹ thuật Network Pivoting</span>
+        Khi Red Team chiếm được quyền điều khiển một máy chủ trong vùng DMZ (như Web Server), máy chủ này thường có 2 card mạng: một card giao tiếp ngoài Internet và một card nối vào mạng LAN nội bộ.<br>
+        • <strong>SOCKS5 (Tầng 5 - Session Layer):</strong> Cho phép chuyển tiếp lưu lượng TCP và UDP bất kỳ mà không phụ thuộc vào ứng dụng.<br>
+        • <strong>Kỹ thuật Pivoting:</strong> Sử dụng công cụ tạo tunnel ngược (như <em>Chisel</em> hoặc <em>Ligolo-ng</em>) biến máy chủ DMZ thành một SOCKS5 proxy server. Sau đó trên máy tính của chuyên gia bảo mật, kết hợp tiện ích <code>proxychains</code> để định tuyến toàn bộ công cụ (Nmap, CrackMapExec, Impacket) thâm nhập sâu vào mạng nội bộ vốn bị tường lửa ngăn cách.
+      </div>
+
+      <!-- QUIZ MỤC 3 -->
+      <div class="quiz-container">
+        <div class="quiz-header">
+          <i class="fa-solid fa-circle-question"></i>
+          <span>Kiểm tra kiến thức Mục 3: Active Directory & Dịch vụ Mạng (+10 điểm / câu đúng)</span>
+        </div>
+
+        {% for q in categorized.ad_network %}
+        <div class="question-block {% if q.id in solved_ids %}solved{% endif %}" id="q-block-{{ q.id }}">
+          {% if q.id in solved_ids %}
+            <span class="tag-solved"><i class="fa-solid fa-check"></i> Đã hoàn thành (+10 pts)</span>
+          {% endif %}
+          <div class="q-title">Câu {{ loop.index }}: {{ q.question }}</div>
+          
+          <form onsubmit="submitQuestion(event, {{ q.id }})">
+            <input type="hidden" name="question_id" value="{{ q.id }}">
+            <div class="options-grid">
+              {% for opt in q.parsed_options %}
+              <label class="option-label">
+                <input type="radio" name="chosen_index" value="{{ loop.index0 }}" required {% if q.id in solved_ids %}disabled{% endif %}>
+                <span>{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if q.id not in solved_ids %}
+            <button type="submit" class="btn-submit-q"><i class="fa-solid fa-paper-plane"></i> Gửi đáp án</button>
+            {% endif %}
+          </form>
+
+          <div class="q-feedback {% if q.id in solved_ids %}success{% endif %}" id="feedback-{{ q.id }}">
+            {% if q.id in solved_ids %}
+              <strong>Giải thích:</strong> {{ q.explanation }}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleAccordion(header) {
+    const item = header.parentElement;
+    item.classList.toggle('active');
+  }
+
+  async function submitQuestion(e, qId) {
+    e.preventDefault();
+    const form = e.target;
+    const chosenRadio = form.querySelector('input[name="chosen_index"]:checked');
+    if (!chosenRadio) return;
+
+    const chosenIndex = chosenRadio.value;
+    const btn = form.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+
+    try {
+      const response = await fetch("{{ url_for('submit_quiz') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({
+          question_id: qId,
+          chosen_index: chosenIndex
+        })
+      });
+
+      const result = await response.json();
+      const feedbackDiv = document.getElementById('feedback-' + qId);
+      const qBlock = document.getElementById('q-block-' + qId);
+
+      if (result.status === 'success') {
+        if (result.correct) {
+          feedbackDiv.className = 'q-feedback success';
+          feedbackDiv.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Chính xác!</strong> +${result.points_awarded} điểm.<br>${result.explanation}`;
+          qBlock.classList.add('solved');
+          
+          // Disable radio inputs
+          form.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+          if (btn) btn.remove();
+
+          // Add solved tag if not present
+          if (!qBlock.querySelector('.tag-solved')) {
+            const tag = document.createElement('span');
+            tag.className = 'tag-solved';
+            tag.innerHTML = '<i class="fa-solid fa-check"></i> Đã hoàn thành (+10 pts)';
+            qBlock.insertBefore(tag, qBlock.firstChild);
+          }
+
+          // Update current score on page
+          const scoreEl = document.getElementById('current-score-val');
+          if (scoreEl && result.new_score !== undefined) {
+            scoreEl.innerText = result.new_score;
+          }
+        } else {
+          feedbackDiv.className = 'q-feedback error';
+          feedbackDiv.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Sai rồi!</strong> ${result.explanation}`;
+          if (btn) btn.disabled = false;
+        }
+      } else {
+        alert(result.message || 'Lỗi khi gửi kết quả.');
+        if (btn) btn.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi kết nối tới máy chủ.');
+      if (btn) btn.disabled = false;
+    }
+  }
+</script>
+
+{% endblock %}

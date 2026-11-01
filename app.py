@@ -9,6 +9,7 @@ import platform
 import psutil
 import requests
 import re
+import json
 import sqlite3
 import hmac
 import hashlib
@@ -173,6 +174,42 @@ class TargetRequestLog(db.Model):
     action = db.Column(db.String(200), nullable=False)  # mô tả hành động
     target = db.Column(db.String(200), nullable=False)  # IP/URL đích
     result = db.Column(db.String(100), nullable=True)   # kết quả (status, open, blocked...)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class QuizQuestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False)  # kill_chain, windows_internals, ad_network
+    question = db.Column(db.String(500), nullable=False)
+    options = db.Column(db.Text, nullable=False)  # JSON array string
+    correct_index = db.Column(db.Integer, nullable=False)
+    explanation = db.Column(db.Text, nullable=True)
+
+class QuizProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('quiz_question.id'), nullable=False)
+    correct = db.Column(db.Boolean, default=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Scenario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+class ScenarioStep(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('scenario.id'), nullable=False)
+    order = db.Column(db.Integer, nullable=False)
+    situation_text = db.Column(db.Text, nullable=False)
+    options = db.Column(db.Text, nullable=False)  # JSON array string: [{text, next_step_id, is_correct, feedback}]
+
+class IocProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ioc_id = db.Column(db.Integer, nullable=False)
+    submitted_technique = db.Column(db.String(100), nullable=True)
+    submitted_defense = db.Column(db.Text, nullable=True)
+    is_correct = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
@@ -895,9 +932,181 @@ def egress_test():
 # ==========================================
 # 7. KHỞI TẠO DATABASE
 # ==========================================
+
+def seed_knowledge_base():
+    if QuizQuestion.query.count() == 0:
+        questions = [
+            # 1. Kill Chain
+            QuizQuestion(
+                category='kill_chain',
+                question='Giai đoạn nào trong Cyber Kill Chain tập trung vào thu thập thông tin nguồn mở (OSINT) và quét mạng để lập bản đồ bề mặt tấn công?',
+                options=json.dumps(['Reconnaissance (Trinh sát)', 'Weaponization (Vũ khí hóa)', 'Exploitation (Khai thác)', 'Actions on Objectives (Đạt mục tiêu)'], ensure_ascii=False),
+                correct_index=0,
+                explanation='Reconnaissance (Trinh sát) là bước đầu tiên trong chuỗi tấn công nhằm tìm hiểu kỹ mục tiêu (OSINT, DNS, port scanning) trước khi gửi payload.'
+            ),
+            QuizQuestion(
+                category='kill_chain',
+                question='Kỹ thuật duy trì hiện diện (Persistence) nào sau đây hoạt động bằng cách ghi giá trị vào Registry để tự kích hoạt cùng phiên đăng nhập người dùng Windows?',
+                options=json.dumps(['Pass-the-Hash', 'Registry Run Keys (HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run)', 'DNS Tunneling', 'Direct Syscalls'], ensure_ascii=False),
+                correct_index=1,
+                explanation='Registry Run Keys (HKCU hoặc HKLM ...\\CurrentVersion\\Run) là kỹ thuật persistence kinh điển, tự động chạy payload khi người dùng đăng nhập.'
+            ),
+            QuizQuestion(
+                category='kill_chain',
+                question='Kỹ thuật nào cho phép Red Team di chuyển lén lút giữa các máy chủ Windows trong mạng nội bộ mà không cần bẻ khóa mật khẩu văn bản thô (plaintext)?',
+                options=json.dumps(['Pass-the-Hash (sử dụng trực tiếp NTLM hash)', 'DHCP Starvation', 'SQL Injection', 'Deconfliction'], ensure_ascii=False),
+                correct_index=0,
+                explanation='Pass-the-Hash (PtH) cho phép xác thực NTLM với dịch vụ từ xa (SMB, WMI) bằng hash mật khẩu trích xuất được từ bộ nhớ mà không cần giải mã mật khẩu gốc.'
+            ),
+            QuizQuestion(
+                category='kill_chain',
+                question='Mục đích chính của việc sử dụng DNS Tunneling trong giai đoạn C&C (Command & Control) là gì?',
+                options=json.dumps(['Gây tràn bộ nhớ máy chủ DNS nội bộ', 'Tuồn dữ liệu hoặc duy trì kênh chỉ huy lách qua tường lửa egress chỉ cho phép cổng 53', 'Tăng tốc độ truyền tệp tin lớn trong LAN', 'Tự động cấp phát địa chỉ IP'], ensure_ascii=False),
+                correct_index=1,
+                explanation='Đa số tường lửa cho phép lưu lượng DNS (cổng 53 UDP) đi ra ngoài. DNS Tunneling mã hóa payload vào tên miền con (subdomain) để tạo kênh C2 bí mật.'
+            ),
+
+            # 2. Windows Internals
+            QuizQuestion(
+                category='windows_internals',
+                question='Trong kiến trúc Windows, luồng gọi API nào sau đây thể hiện đúng thứ tự từ ứng dụng User Mode xuống Kernel Mode?',
+                options=json.dumps(['Application → kernel32.dll → ntdll.dll → Syscall → Kernel (ntoskrnl.exe)', 'Application → Kernel → ntdll.dll → kernel32.dll', 'Application → Syscall → kernel32.dll → ntdll.dll', 'Application → ntdll.dll → PEB → Kernel'], ensure_ascii=False),
+                correct_index=0,
+                explanation='Ứng dụng gọi API cấp cao tại kernel32.dll, thư viện này chuyển tiếp sang Native API tại ntdll.dll, ntdll nạp syscall ID và gọi lệnh syscall để chuyển quyền xuống Ring 0 (ntoskrnl.exe).'
+            ),
+            QuizQuestion(
+                category='windows_internals',
+                question='Kỹ thuật Process Injection kinh điển vào tiến trình hợp lệ (như explorer.exe) sử dụng chuỗi 3 API nào theo đúng trình tự?',
+                options=json.dumps(['VirtualAllocEx → WriteProcessMemory → CreateRemoteThread', 'OpenProcess → TerminateProcess → DeleteFile', 'CreateFile → ReadFile → CloseHandle', 'AmsiScanBuffer → LoadLibrary → GetProcAddress'], ensure_ascii=False),
+                correct_index=0,
+                explanation='VirtualAllocEx cấp phát vùng nhớ trong tiến trình đích, WriteProcessMemory ghi shellcode vào đó, và CreateRemoteThread khởi tạo luồng thực thi shellcode.'
+            ),
+            QuizQuestion(
+                category='windows_internals',
+                question='Cơ chế nào thường được Red Team nghiên cứu để vượt qua sự giám sát User-mode Hooking của EDR trên ntdll.dll?',
+                options=json.dumps(['Chạy script dưới quyền Guest', 'Direct Syscalls (gọi lệnh syscall trực tiếp lách qua hook ntdll)', 'Tắt tường lửa Windows Defender', 'Đổi đuôi file sang .txt'], ensure_ascii=False),
+                correct_index=1,
+                explanation='EDR thường cài đặt inline hook tại ntdll.dll ở User Mode. Direct Syscalls nạp mã syscall trực tiếp vào thanh ghi EAX và gọi lệnh syscall, không đi qua các hàm bị hook trong ntdll.'
+            ),
+            QuizQuestion(
+                category='windows_internals',
+                question='Để lách qua cơ chế kiểm tra mã độc của AMSI (Antimalware Scan Interface) trong bộ nhớ tiến trình PowerShell, kỹ thuật phổ biến là gì?',
+                options=json.dumps(['Khởi động lại máy chủ', 'Patch byte hàm AmsiScanBuffer trong bộ nhớ để luôn trả về kết quả an toàn (0)', 'Xóa file powershell.exe', 'Tăng dung lượng RAM'], ensure_ascii=False),
+                correct_index=1,
+                explanation='Kỹ thuật in-memory patch hàm AmsiScanBuffer ghi đè vài byte đầu tiên (như xor eax, eax; ret) để hàm luôn trả về mã thành công và báo script sạch.'
+            ),
+
+            # 3. AD & Network Services
+            QuizQuestion(
+                category='ad_network',
+                question='Quy trình cấp phát địa chỉ IP động của giao thức DHCP diễn ra theo trình tự 4 bước nào (DORA)?',
+                options=json.dumps(['Discover → Offer → Request → Acknowledge', 'Direct → Open → Receive → Accept', 'Download → Operate → Release → Allocate', 'Detect → Order → Register → Authorize'], ensure_ascii=False),
+                correct_index=0,
+                explanation='DHCP DORA: 1. Discover (Client broadcast tìm DHCP), 2. Offer (Server đề xuất IP), 3. Request (Client xin nhận IP), 4. Acknowledge (Server xác nhận cấp phát).'
+            ),
+            QuizQuestion(
+                category='ad_network',
+                question='Tính năng bảo mật trên Switch Layer 2 giúp ngăn chặn tấn công máy chủ DHCP giả mạo (Rogue DHCP) được gọi là gì?',
+                options=json.dumps(['Port Security', 'DHCP Snooping', 'VLAN Tagging', 'DNSSEC'], ensure_ascii=False),
+                correct_index=1,
+                explanation='DHCP Snooping phân loại cổng Switch thành Trusted (chỉ cổng nối DHCP server hợp lệ mới được gửi Offer/ACK) và Untrusted (chặn gói tin cấp phát IP giả mạo).'
+            ),
+            QuizQuestion(
+                category='ad_network',
+                question='Tệp tin cơ sở dữ liệu nào trong Active Directory lưu trữ toàn bộ thông tin tài khoản, nhóm và NTLM password hashes của domain?',
+                options=json.dumps(['sam.bak', 'ntds.dit', 'active_directory.db', 'kerberos.keytab'], ensure_ascii=False),
+                correct_index=1,
+                explanation='ntds.dit là cơ sở dữ liệu chính của Active Directory Domain Services, chứa toàn bộ thông tin người dùng và hash mật khẩu miền.'
+            ),
+            QuizQuestion(
+                category='ad_network',
+                question='Để thực hiện kỹ thuật Pivoting (bắc cầu mạng) xuyên qua firewall từ máy chủ DMZ bị chiếm quyền vào mạng nội bộ, giao thức tầng 5 nào thường được kết hợp với Chisel/Ligolo-ng và Proxychains?',
+                options=json.dumps(['SOCKS5 (port 1080)', 'FTP (port 21)', 'SNMP (port 161)', 'POP3 (port 110)'], ensure_ascii=False),
+                correct_index=0,
+                explanation='SOCKS5 hoạt động ở tầng Session (Layer 5), cho phép chuyển tiếp lưu lượng TCP/UDP tùy ý thông qua tunnel, kết hợp Proxychains để pivot sâu vào mạng nội bộ.'
+            )
+        ]
+        db.session.add_all(questions)
+        db.session.commit()
+        print('>>> Seeded QuizQuestions successfully.')
+
+
+# ==========================================
+# MODULE 1: KNOWLEDGE BASE & QUIZ
+# ==========================================
+@app.route('/knowledge_base')
+@login_required
+def knowledge_base():
+    seed_knowledge_base()
+    questions = QuizQuestion.query.all()
+    categorized = {
+        'kill_chain': [q for q in questions if q.category == 'kill_chain'],
+        'windows_internals': [q for q in questions if q.category == 'windows_internals'],
+        'ad_network': [q for q in questions if q.category == 'ad_network']
+    }
+    
+    solved_ids = {p.question_id for p in QuizProgress.query.filter_by(user_id=current_user.id, correct=True).all()}
+    
+    for cat in categorized:
+        for q in categorized[cat]:
+            try:
+                q.parsed_options = json.loads(q.options)
+            except Exception:
+                q.parsed_options = []
+                
+    return render_template('knowledge_base.html', categorized=categorized, solved_ids=solved_ids)
+
+@app.route('/knowledge_base/submit', methods=['POST'])
+@login_required
+def submit_quiz():
+    data = request.get_json(silent=True) or request.form
+    question_id = data.get('question_id')
+    chosen_index = data.get('chosen_index')
+    
+    if question_id is None or chosen_index is None:
+        return jsonify({'status': 'error', 'message': 'Thiếu dữ liệu câu hỏi hoặc đáp án.'}), 400
+        
+    try:
+        qid = int(question_id)
+        c_idx = int(chosen_index)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Dữ liệu không hợp lệ.'}), 400
+        
+    question = db.session.get(QuizQuestion, qid)
+    if not question:
+        return jsonify({'status': 'error', 'message': 'Không tìm thấy câu hỏi.'}), 404
+        
+    existing_progress = QuizProgress.query.filter_by(user_id=current_user.id, question_id=qid, correct=True).first()
+    is_correct = (c_idx == question.correct_index)
+    points_awarded = 0
+    
+    if is_correct:
+        if not existing_progress:
+            progress = QuizProgress(user_id=current_user.id, question_id=qid, correct=True)
+            db.session.add(progress)
+            current_user.score += 10
+            points_awarded = 10
+            log_action(f'Quiz: {question.category}')
+            db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'correct': True,
+            'points_awarded': points_awarded,
+            'new_score': current_user.score,
+            'explanation': question.explanation,
+            'already_solved': bool(existing_progress)
+        })
+    else:
+        return jsonify({
+            'status': 'success',
+            'correct': False,
+            'explanation': 'Chưa chính xác. Hãy đọc lại phần lý thuyết tương ứng ở trên và thử lại!'
+        })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        seed_knowledge_base()
         # Xóa bảng cũ nếu schema thay đổi
         db.session.commit()
         

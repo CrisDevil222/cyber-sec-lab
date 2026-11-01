@@ -1,0 +1,688 @@
+{% extends "base.html" %}
+{% block title %}Kịch Bản Mô Phỏng Red Team — Kill Chain Decision Tree{% endblock %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  :root {
+    --red: #ff2244;
+    --red-glow: rgba(255, 34, 68, 0.4);
+    --green: #00ff88;
+    --green-glow: rgba(0, 255, 136, 0.4);
+    --cyan: #00e5ff;
+    --cyan-glow: rgba(0, 229, 255, 0.4);
+    --bg-dark: rgba(12, 15, 22, 0.92);
+    --border-dim: rgba(255, 255, 255, 0.08);
+  }
+
+  .sc-wrap {
+    max-width: 1100px;
+    margin: 0 auto 3.5rem;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+  }
+
+  /* BANNER */
+  .sc-banner {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255, 34, 68, 0.35);
+    border-radius: 4px;
+    padding: 1.6rem 2rem;
+    margin-bottom: 1.8rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 25px rgba(255, 34, 68, 0.08);
+  }
+  .sc-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--red);
+  }
+  .sc-tag {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    padding: 2px 8px;
+    background: rgba(255, 34, 68, 0.12);
+    border: 1px solid rgba(255, 34, 68, 0.4);
+    color: var(--red);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .sc-score {
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .88rem;
+    background: rgba(255, 34, 68, 0.1);
+    border: 1px solid rgba(255, 34, 68, 0.35);
+    color: var(--red);
+    padding: .45rem 1rem;
+    border-radius: 4px;
+  }
+
+  /* KILL CHAIN TRACKER */
+  .chain-tracker {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .4rem;
+    margin-bottom: 2rem;
+    background: rgba(10, 12, 18, 0.85);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: .8rem;
+  }
+  @media(max-width: 900px) {
+    .chain-tracker {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  @media(max-width: 580px) {
+    .chain-tracker {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .chain-node {
+    background: rgba(20, 24, 32, 0.6);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: .65rem .4rem;
+    text-align: center;
+    transition: all .25s;
+    position: relative;
+  }
+  .chain-node.active {
+    border-color: var(--red);
+    background: rgba(255, 34, 68, 0.12);
+    box-shadow: 0 0 15px var(--red-glow);
+  }
+  .chain-node.completed {
+    border-color: var(--green);
+    background: rgba(0, 255, 136, 0.08);
+  }
+  .chain-node.locked {
+    opacity: 0.45;
+  }
+  .node-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .62rem;
+    display: block;
+    color: var(--text-dim);
+    margin-bottom: .2rem;
+  }
+  .chain-node.active .node-num { color: var(--red); font-weight: 700; }
+  .chain-node.completed .node-num { color: var(--green); font-weight: 700; }
+  .node-icon {
+    font-size: 1.1rem;
+    margin-bottom: .25rem;
+    display: block;
+  }
+  .chain-node.active .node-icon { color: var(--red); }
+  .chain-node.completed .node-icon { color: var(--green); }
+  .node-title {
+    font-size: .75rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* SCENARIO STEP CARD */
+  .step-card {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255, 34, 68, 0.25);
+    border-radius: 4px;
+    padding: 1.8rem;
+    margin-bottom: 2rem;
+    position: relative;
+    backdrop-filter: blur(8px);
+  }
+  .step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+    gap: .8rem;
+  }
+  .step-phase-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .75rem;
+    color: var(--red);
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .step-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin-top: .2rem;
+  }
+  .objective-box {
+    background: rgba(0, 229, 255, 0.05);
+    border-left: 3px solid var(--cyan);
+    padding: .8rem 1rem;
+    margin-bottom: 1.4rem;
+    font-size: .88rem;
+    color: #d0f0ff;
+    line-height: 1.5;
+  }
+  .objective-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    color: var(--cyan);
+    font-weight: 700;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: .25rem;
+  }
+  .situation-box {
+    background: rgba(5, 7, 10, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1.1rem;
+    border-radius: 4px;
+    font-size: .92rem;
+    line-height: 1.65;
+    color: #dde0e8;
+    margin-bottom: 1.8rem;
+  }
+
+  /* OPTIONS GRID */
+  .options-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .78rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .option-btn {
+    background: rgba(18, 22, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 1.1rem 1.4rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all .22s ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    color: var(--text);
+  }
+  .option-btn:hover {
+    border-color: var(--cyan);
+    background: rgba(0, 229, 255, 0.06);
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.15);
+    transform: translateY(-2px);
+  }
+  .option-letter {
+    width: 38px;
+    height: 38px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .option-btn:hover .option-letter {
+    background: var(--cyan);
+    color: #000;
+    border-color: var(--cyan);
+  }
+  .option-content {
+    flex: 1;
+  }
+  .option-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: .25rem;
+  }
+  .option-desc {
+    font-size: .84rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* FEEDBACK BOX */
+  .feedback-box {
+    margin-top: 1.5rem;
+    padding: 1.2rem 1.4rem;
+    border-radius: 4px;
+    display: none;
+    animation: fadeIn .25s ease;
+  }
+  .feedback-box.correct {
+    display: block;
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid var(--green);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+  }
+  .feedback-box.wrong {
+    display: block;
+    background: rgba(255, 34, 68, 0.08);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(255, 34, 68, 0.15);
+  }
+  .feedback-hdr {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: .45rem;
+  }
+  .feedback-box.correct .feedback-hdr { color: var(--green); }
+  .feedback-box.wrong .feedback-hdr { color: var(--red); }
+  .feedback-body {
+    font-size: .88rem;
+    line-height: 1.6;
+    color: #f0f4fa;
+  }
+  .feedback-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: .8rem;
+  }
+  .btn-next-step {
+    padding: .55rem 1.3rem;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+  }
+  .btn-next-step:hover {
+    background: #44ffaa;
+    box-shadow: 0 0 15px var(--green-glow);
+  }
+  .btn-retry-step {
+    padding: .55rem 1.3rem;
+    background: rgba(255, 34, 68, 0.2);
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+  }
+  .btn-retry-step:hover {
+    background: var(--red);
+    color: #fff;
+  }
+
+  /* VICTORY OVERLAY */
+  .victory-card {
+    background: rgba(10, 14, 22, 0.96);
+    border: 2px solid var(--green);
+    border-radius: 4px;
+    padding: 2.2rem 2rem;
+    text-align: center;
+    box-shadow: 0 0 35px rgba(0, 255, 136, 0.25);
+    margin-bottom: 2rem;
+    animation: fadeIn .4s ease;
+    display: none;
+  }
+  .victory-badge {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1.2rem;
+    border-radius: 50%;
+    background: rgba(0, 255, 136, 0.15);
+    border: 2px solid var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: var(--green);
+    box-shadow: 0 0 25px var(--green-glow);
+  }
+  .victory-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: .5rem;
+    letter-spacing: .05em;
+  }
+  .recap-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.6rem 0;
+    text-align: left;
+    font-size: .82rem;
+  }
+  .recap-table th {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    padding: .65rem .8rem;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    text-transform: uppercase;
+    font-size: .7rem;
+  }
+  .recap-table td {
+    padding: .65rem .8rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+</style>
+
+<div class="sc-wrap">
+
+  <!-- BANNER -->
+  <div class="sc-banner">
+    <div class="sc-score">
+      <i class="fa-solid fa-coins"></i> ĐIỂM: <span id="current-score-val">{{ current_user.score }}</span> pts
+    </div>
+    <span class="sc-tag"><i class="fa-solid fa-shield-halved"></i> MODULE 3 · MÔ PHỎNG CHIẾN DỊCH RED TEAM THỰC TẾ</span>
+    <h1 style="font-size:1.9rem;color:#fff;margin-bottom:.4rem;">
+      <i class="fa-solid fa-chess-knight" style="color:var(--red);"></i> {{ scenario.title }}
+    </h1>
+    <p style="font-size:.92rem;color:var(--text);line-height:1.6;max-width:850px;">
+      {{ scenario.description }}
+    </p>
+    <div style="margin-top:1rem;display:flex;gap:1.5rem;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--text-dim);flex-wrap:wrap;">
+      <div><i class="fa-solid fa-building" style="color:var(--cyan);"></i> MỤC TIÊU: FINSECURE CORP (FINTECH BANKING)</div>
+      <div><i class="fa-solid fa-file-contract" style="color:var(--green);"></i> QUY TẮC KIỂM THỬ: ROE ĐƯỢC CẤP PHÉP CHẶT CHẼ</div>
+      <div><i class="fa-solid fa-award" style="color:#ffcc00;"></i> THƯỞNG HOÀN THÀNH: +50 ĐIỂM</div>
+    </div>
+  </div>
+
+  <!-- 7-STEP KILL CHAIN TRACKER -->
+  <div class="chain-tracker" id="chain-tracker">
+    {% for s in steps %}
+    <div class="chain-node {% if s.order < current_step_order %}completed{% elif s.order == current_step_order and not has_completed %}active{% elif has_completed %}completed{% else %}locked{% endif %}" id="node-step-{{ s.order }}">
+      <span class="node-num">BƯỚC 0{{ s.order }}</span>
+      <i class="{{ s.icon }} node-icon"></i>
+      <div class="node-title">{{ s.name.split('(')[0].strip() }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- VICTORY SCREEN (NẾU ĐÃ HOÀN THÀNH HOẶC VỪA HOÀN THÀNH) -->
+  <div class="victory-card" id="victory-card" style="{% if has_completed %}display:block;{% endif %}">
+    <div class="victory-badge"><i class="fa-solid fa-trophy"></i></div>
+    <h2 class="victory-title">CHIẾN DỊCH XÂM NHẬP HOÀN TẤT THÀNH CÔNG!</h2>
+    <p style="font-size:.95rem;color:var(--text);max-width:750px;margin:0 auto 1.2rem;line-height:1.6;">
+      Chúc mừng bạn! Bạn đã hoàn thành xuất sắc toàn bộ 7 giai đoạn của Red Team Kill Chain. Mọi hành động đều tuân thủ chặt chẽ Rules of Engagement (RoE), không làm gián đoạn hạ tầng khách hàng và cung cấp báo cáo giá trị cho Blue Team.
+    </p>
+    <div style="display:inline-block;padding:.6rem 1.6rem;background:rgba(0,255,136,0.15);border:1px solid var(--green);border-radius:4px;color:var(--green);font-family:'Share Tech Mono',monospace;font-weight:700;font-size:1rem;margin-bottom:1.5rem;">
+      <i class="fa-solid fa-circle-check"></i> ĐÃ NHẬN THƯỞNG: +50 ĐIỂM CHIẾN DỊCH
+    </div>
+
+    <!-- TỔNG KẾT 7 BƯỚC -->
+    <h3 style="font-size:1.15rem;color:#fff;text-align:left;margin-top:1.2rem;">
+      <i class="fa-solid fa-list-check" style="color:var(--cyan);"></i> Tổng kết kỹ thuật tối ưu theo 7 bước Kill Chain:
+    </h3>
+    <table class="recap-table">
+      <thead>
+        <tr>
+          <th>Giai đoạn</th>
+          <th>Kỹ thuật tối ưu (Red Team Approved)</th>
+          <th>Lợi thế thực tế & Tránh SOC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Reconnaissance</td>
+          <td>OSINT Thụ động (CT Logs, GitHub Leaks, LinkedIn)</td>
+          <td>Không tạo lưu lượng tới mạng mục tiêu, tránh kích hoạt SIEM cảnh báo Port Scan.</td>
+        </tr>
+        <tr>
+          <td>2. Weaponization & Delivery</td>
+          <td>Spear Phishing Link dẫn tới trang SSO Okta giả mạo</td>
+          <td>Vượt qua bộ lọc mã độc của Mail Gateway, khai thác yếu tố con người.</td>
+        </tr>
+        <tr>
+          <td>3. Exploitation & Initial Access</td>
+          <td>In-Memory HTTPS Reverse Shell (Port 443)</td>
+          <td>Không ghi file xuống đĩa, lưu lượng mã hóa cổng 443 hòa lẫn vào HTTPS thông thường.</td>
+        </tr>
+        <tr>
+          <td>4. Persistence</td>
+          <td>Scheduled Task dưới dịch vụ hợp lệ + Random Jitter (20-30%)</td>
+          <td>Tránh thuật toán phát hiện chu kỳ beacon cố định, không kích hoạt Event ID đổi mật khẩu/thêm Admin.</td>
+        </tr>
+        <tr>
+          <td>5. Command & Control</td>
+          <td>Malleable HTTPS C2 Profile + Tên miền uy tín / Fallback DNS TXT</td>
+          <td>Vượt qua kiểm tra SSL Inspection và NGFW, không dùng cổng lạ.</td>
+        </tr>
+        <tr>
+          <td>6. Lateral Movement</td>
+          <td>SOCKS5 Reverse Proxy (Chisel/Ligolo) + Kerberos Ticket Abuse</td>
+          <td>Bắc cầu DMZ vào Core AD mà không thay đổi định tuyến mạng, không dùng công cụ thô thiển.</td>
+        </tr>
+        <tr>
+          <td>7. Actions on Objectives</td>
+          <td>Masked PoC Demo, ghi chép Timeline chi tiết & Phối hợp Purple Team</td>
+          <td>Bảo vệ an toàn dữ liệu khách hàng theo RoE, nâng cao năng lực phòng thủ toàn diện.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <button onclick="resetScenario()" class="btn-retry-step" style="padding:.7rem 1.8rem;font-size:.85rem;margin-top:.8rem;">
+      <i class="fa-solid fa-rotate-right"></i> Thực Hiện Lại Kịch Bản
+    </button>
+  </div>
+
+  <!-- ACTIVE STEP CARDS CONTAINER -->
+  <div id="step-container" style="{% if has_completed %}display:none;{% endif %}">
+    {% for s in steps %}
+    <div class="step-card" id="step-card-{{ s.order }}" style="{% if s.order != current_step_order %}display:none;{% endif %}">
+      
+      <div class="step-header">
+        <div>
+          <span class="step-phase-badge"><i class="{{ s.icon }}"></i> BƯỚC 0{{ s.order }} / 07 · {{ s.name }}</span>
+          <h2 class="step-title">Giai đoạn: {{ s.name }}</h2>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.78rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:.4rem .8rem;border-radius:3px;">
+          TIẾN TRÌNH: {{ s.order }}/7 BƯỚC
+        </div>
+      </div>
+
+      <div class="objective-box">
+        <span class="objective-label"><i class="fa-solid fa-bullseye"></i> Mục tiêu chiến thuật:</span>
+        {{ s.objective }}
+      </div>
+
+      <div class="situation-box">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--red);margin-bottom:.4rem;text-transform:uppercase;font-weight:700;">
+          [TÌNH HUỐNG THỰC TẾ]:
+        </div>
+        {{ s.situation }}
+      </div>
+
+      <span class="options-label"><i class="fa-solid fa-hand-pointer"></i> Hãy chọn phương án hành động kỹ thuật tối ưu:</span>
+      <div class="options-grid">
+        {% for opt in s.options %}
+        <button class="option-btn" onclick="submitChoice({{ s.order }}, '{{ opt.id }}')">
+          <div class="option-letter">{{ opt.id }}</div>
+          <div class="option-content">
+            <div class="option-title">{{ opt.title }}</div>
+            <div class="option-desc">{{ opt.desc }}</div>
+          </div>
+        </button>
+        {% endfor %}
+      </div>
+
+      <!-- FEEDBACK DISPLAY -->
+      <div class="feedback-box" id="feedback-box-{{ s.order }}">
+        <div class="feedback-hdr" id="feedback-hdr-{{ s.order }}"></div>
+        <div class="feedback-body" id="feedback-body-{{ s.order }}"></div>
+        <div class="feedback-actions" id="feedback-actions-{{ s.order }}"></div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<script>
+  let currentStep = {{ current_step_order }};
+  const csrfToken = "{{ csrf_token() }}";
+
+  function submitChoice(step, optionId) {
+    const feedbackBox = document.getElementById('feedback-box-' + step);
+    const feedbackHdr = document.getElementById('feedback-hdr-' + step);
+    const feedbackBody = document.getElementById('feedback-body-' + step);
+    const feedbackActions = document.getElementById('feedback-actions-' + step);
+
+    fetch('/redteam_scenario/choose', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ step: step, option_id: optionId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        if (data.correct) {
+          feedbackBox.className = 'feedback-box correct';
+          feedbackHdr.innerHTML = '<i class="fa-solid fa-circle-check"></i> CHÍNH XÁC · LỰA CHỌN TỐI ƯU THỰC TẾ';
+          feedbackBody.innerText = data.feedback;
+
+          if (data.points_awarded > 0) {
+            document.getElementById('current-score-val').innerText = data.new_score;
+          }
+
+          if (data.completed) {
+            feedbackActions.innerHTML = `
+              <button class="btn-next-step" onclick="showVictoryScreen()">
+                <i class="fa-solid fa-trophy"></i> Xem Tổng Kết Chiến Dịch (+50 Điểm)
+              </button>
+            `;
+          } else {
+            feedbackActions.innerHTML = `
+              <button class="btn-next-step" onclick="goToStep(${data.next_step})">
+                <i class="fa-solid fa-arrow-right"></i> Tiến Sang Bước 0${data.next_step}
+              </button>
+            `;
+          }
+        } else {
+          feedbackBox.className = 'feedback-box wrong';
+          feedbackHdr.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> THẤT BẠI · BỊ PHÁT HIỆN HOẶC VI PHẠM ROE';
+          feedbackBody.innerText = data.feedback;
+          feedbackActions.innerHTML = `
+            <button class="btn-retry-step" onclick="retryStep(${step})">
+              <i class="fa-solid fa-rotate-left"></i> Chọn Lại Phương Án Khác
+            </button>
+          `;
+        }
+      } else {
+        alert(data.message || 'Lỗi xử lý yêu cầu.');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Lỗi kết nối máy chủ.');
+    });
+  }
+
+  function retryStep(step) {
+    const feedbackBox = document.getElementById('feedback-box-' + step);
+    feedbackBox.style.display = 'none';
+  }
+
+  function goToStep(nextStep) {
+    // Hide current card
+    const curCard = document.getElementById('step-card-' + currentStep);
+    if (curCard) curCard.style.display = 'none';
+
+    // Update node tracker
+    const prevNode = document.getElementById('node-step-' + currentStep);
+    if (prevNode) {
+      prevNode.classList.remove('active');
+      prevNode.classList.add('completed');
+    }
+
+    currentStep = nextStep;
+
+    const nextNode = document.getElementById('node-step-' + currentStep);
+    if (nextNode) {
+      nextNode.classList.remove('locked');
+      nextNode.classList.add('active');
+    }
+
+    // Show next card
+    const nextCard = document.getElementById('step-card-' + currentStep);
+    if (nextCard) {
+      nextCard.style.display = 'block';
+      nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function showVictoryScreen() {
+    // Hide step cards
+    document.getElementById('step-container').style.display = 'none';
+
+    // Mark all nodes completed
+    for (let i = 1; i <= 7; i++) {
+      const node = document.getElementById('node-step-' + i);
+      if (node) {
+        node.classList.remove('active', 'locked');
+        node.classList.add('completed');
+      }
+    }
+
+    // Show victory card
+    const vic = document.getElementById('victory-card');
+    vic.style.display = 'block';
+    vic.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetScenario() {
+    fetch('/redteam_scenario/reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      }
+    })
+    .then(r => r.json())
+    .then(() => {
+      window.location.reload();
+    });
+  }
+</script>
+
+{% endblock %}

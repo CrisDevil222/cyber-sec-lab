@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Red Team{% endblock %}
+{% block title %}Red Team — Mô phỏng Tấn công & Đánh giá An ninh Xâm nhập{% endblock %}
 {% block content %}
 
 <style>
@@ -12,8 +12,9 @@
     --red-faint: rgba(255, 34, 68, 0.07);
     --panel:     rgba(15, 17, 20, 0.85);
     --border:    rgba(255, 34, 68, 0.22);
+    --border-light: rgba(255, 255, 255, 0.08);
     --text:      #c8cdd6;
-    --text-dim:  #566070;
+    --text-dim:  #788494;
     --mono:      'Share Tech Mono', monospace;
     --sans:      'Rajdhani', sans-serif;
   }
@@ -21,23 +22,28 @@
   .rt-wrap { font-family:var(--sans); color:var(--text); padding:1rem 0 3rem; }
 
   /* HEADER */
-  .rt-header { display:flex; align-items:flex-start; gap:1.8rem; margin-bottom:2.5rem; padding-bottom:1.8rem; border-bottom:1px solid var(--border); animation:rtFadeDown .55s ease both; }
+  .rt-header { display:flex; align-items:flex-start; gap:1.8rem; margin-bottom:2rem; padding-bottom:1.8rem; border-bottom:1px solid var(--border); animation:rtFadeDown .55s ease both; }
   .rt-badge { width:68px; height:68px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-size:1.9rem; flex-shrink:0; position:relative; box-shadow:0 0 18px var(--red-glow),inset 0 0 18px var(--red-faint); animation:rtPulse 3s ease infinite; background:var(--red-faint); }
   .rt-badge::before { content:''; position:absolute; inset:-6px; border:1px solid rgba(255,34,68,.3); animation:rtPulse 3s ease infinite reverse; }
-  .rt-tag { font-family:var(--mono); font-size:.68rem; color:var(--red); letter-spacing:.28em; text-transform:uppercase; margin-bottom:.35rem; opacity:.8; }
-  .rt-title { font-size:2.8rem; font-weight:700; color:#fff; letter-spacing:.05em; line-height:1; text-shadow:0 0 28px var(--red-glow); margin-bottom:.45rem; }
+  .rt-tag { font-family:var(--mono); font-size:.68rem; color:var(--red); letter-spacing:.2em; text-transform:uppercase; margin-bottom:.35rem; opacity:.9; font-weight:700; }
+  .rt-title { font-size:2.4rem; font-weight:700; color:#fff; letter-spacing:.03em; line-height:1.2; text-shadow:0 0 28px var(--red-glow); margin-bottom:.45rem; }
   .rt-title span { color:var(--red); }
-  .rt-subtitle { font-size:.95rem; color:var(--text-dim); line-height:1.6; max-width:500px; }
-  .rt-status-bar { display:flex; gap:1.4rem; margin-top:.9rem; flex-wrap:wrap; }
-  .rt-status-item { display:flex; align-items:center; gap:.45rem; font-family:var(--mono); font-size:.7rem; color:var(--text-dim); }
+  .rt-subtitle { font-size:.95rem; color:var(--text); line-height:1.65; max-width:720px; }
+  .rt-status-bar { display:flex; gap:1.4rem; margin-top:1rem; flex-wrap:wrap; }
+  .rt-status-item { display:flex; align-items:center; gap:.45rem; font-family:var(--mono); font-size:.72rem; color:var(--text-dim); }
   .rt-dot { width:6px; height:6px; border-radius:50%; background:var(--red); animation:rtBlink 1.4s step-end infinite; }
   .rt-dot.g { background:#22ff88; animation-delay:.3s; }
   .rt-dot.y { background:#ffcc22; animation-delay:.6s; }
 
-  /* GRIDS */
+  /* GRIDS & LAYOUT */
   .rt-grid-2    { display:grid; grid-template-columns:1fr 1fr;  gap:1.3rem; margin-bottom:1.3rem; animation:rtFadeUp .55s .18s ease both; }
-  .rt-grid-wide { display:grid; grid-template-columns:2fr 1fr; gap:1.3rem; margin-bottom:1.3rem; animation:rtFadeUp .55s .3s ease both; }
-  @media(max-width:820px){ .rt-grid-2,.rt-grid-wide{ grid-template-columns:1fr; } .rt-title{font-size:2rem;} }
+  .rt-grid-3    { display:grid; grid-template-columns:repeat(3, 1fr); gap:1.2rem; margin-bottom:1.3rem; }
+  .rt-grid-wide { display:grid; grid-template-columns:1.5fr 1fr; gap:1.3rem; margin-bottom:1.3rem; animation:rtFadeUp .55s .3s ease both; }
+  @media(max-width:880px){
+    .rt-grid-2, .rt-grid-3, .rt-grid-wide { grid-template-columns:1fr; }
+    .rt-header { flex-direction:column; gap:1rem; }
+    .rt-title { font-size:1.85rem; }
+  }
 
   /* PANEL */
   .rt-panel { background:var(--panel); border:1px solid var(--border); padding:1.4rem; position:relative; overflow:hidden; backdrop-filter:blur(6px); transition:border-color .3s,box-shadow .3s; }
@@ -49,259 +55,469 @@
   .ca.bl{bottom:5px;left:5px;border-width:0 0 1px 1px} .ca.br{bottom:5px;right:5px;border-width:0 1px 1px 0}
   .rt-panel-hdr { display:flex; align-items:center; gap:.55rem; margin-bottom:1.1rem; padding-bottom:.7rem; border-bottom:1px solid rgba(255,34,68,.1); }
   .rt-panel-ico { width:27px; height:27px; background:var(--red-faint); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:.95rem; }
-  .rt-panel-title { font-family:var(--mono); font-size:.72rem; color:var(--red); letter-spacing:.18em; text-transform:uppercase; }
-  .rt-panel-num { margin-left:auto; font-family:var(--mono); font-size:.62rem; color:var(--text-dim); opacity:.5; }
+  .rt-panel-title { font-family:var(--mono); font-size:.75rem; color:var(--red); letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+  .rt-panel-num { margin-left:auto; font-family:var(--mono); font-size:.65rem; color:var(--text-dim); }
+
+  /* CARDS: COMPARISON */
+  .comp-card { background:rgba(20, 24, 32, 0.7); border:1px solid var(--border-light); padding:1.1rem; border-radius:4px; display:flex; flex-direction:column; gap:.5rem; }
+  .comp-card.active-focus { border-color:rgba(255,34,68,.35); background:rgba(255,34,68,.04); }
+  .comp-tag { font-family:var(--mono); font-size:.65rem; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+  .comp-title { font-size:1.1rem; font-weight:700; color:#fff; }
+  .comp-desc { font-size:.82rem; color:var(--text); line-height:1.6; }
+  .comp-meta { font-family:var(--mono); font-size:.7rem; color:var(--text-dim); margin-top:auto; padding-top:.5rem; border-top:1px solid rgba(255,255,255,.05); }
+
+  /* LIFECYCLE STEPS */
+  .rt-steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:.8rem; margin-top:.5rem; }
+  .rt-step { background:rgba(255,34,68,.03); border:1px solid rgba(255,34,68,.12); padding:.85rem; position:relative; }
+  .step-num { font-family:var(--mono); font-size:.65rem; color:var(--red); font-weight:700; margin-bottom:.3rem; display:block; }
+  .step-name { font-size:.9rem; font-weight:700; color:#fff; margin-bottom:.25rem; }
+  .step-text { font-size:.76rem; color:var(--text); line-height:1.55; }
 
   /* ACTIVITIES */
   .rt-acts { display:flex; flex-direction:column; gap:.7rem; }
-  .rt-act { display:flex; align-items:center; gap:.9rem; padding:.65rem .9rem; background:var(--red-faint); border:1px solid rgba(255,34,68,.1); transition:background .2s,border-color .2s,transform .2s; position:relative; overflow:hidden; cursor:default; }
-  .rt-act::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,34,68,.06),transparent); transform:translateX(-100%); transition:transform .4s; }
-  .rt-act:hover::after { transform:translateX(100%); }
+  .rt-act { display:flex; align-items:center; gap:.9rem; padding:.65rem .9rem; background:var(--red-faint); border:1px solid rgba(255,34,68,.1); transition:background .2s,border-color .2s,transform .2s; position:relative; overflow:hidden; }
   .rt-act:hover { background:rgba(255,34,68,.1); border-color:rgba(255,34,68,.28); transform:translateX(4px); }
-  .act-num  { font-family:var(--mono); font-size:.62rem; color:var(--red); opacity:.6; width:22px; flex-shrink:0; }
+  .act-num  { font-family:var(--mono); font-size:.62rem; color:var(--red); opacity:.8; width:22px; flex-shrink:0; font-weight:700; }
   .act-ico  { font-size:.95rem; width:18px; text-align:center; flex-shrink:0; }
   .act-body { flex:1; }
   .act-name { font-size:.88rem; font-weight:600; color:#dde0e8; letter-spacing:.02em; }
   .act-desc { font-size:.72rem; color:var(--text-dim); margin-top:.1rem; font-family:var(--mono); }
-  .act-tag  { font-family:var(--mono); font-size:.58rem; padding:2px 7px; border:1px solid; letter-spacing:.1em; text-transform:uppercase; flex-shrink:0; }
+  .act-tag  { font-family:var(--mono); font-size:.58rem; padding:2px 7px; border:1px solid; letter-spacing:.08em; text-transform:uppercase; flex-shrink:0; }
   .tag-c{border-color:var(--red);color:var(--red)} .tag-h{border-color:#ff8800;color:#ff8800} .tag-m{border-color:#ffcc22;color:#ffcc22}
 
-  /* TERMINAL - dữ liệu thật */
-  .rt-term { background:#050608; border:1px solid rgba(255,34,68,.18); font-family:var(--mono); font-size:.76rem; line-height:1.85; padding:1.1rem; color:#88ff88; height:100%; overflow-y:auto; max-height:340px; }
-  .term-bar { display:flex; align-items:center; gap:5px; margin-bottom:.7rem; padding-bottom:.7rem; border-bottom:1px solid rgba(255,34,68,.1); position:sticky; top:0; background:#050608; }
+  /* TERMINAL - nhật ký AuditLog */
+  .rt-term { background:#050608; border:1px solid rgba(255,34,68,.18); font-family:var(--mono); font-size:.76rem; line-height:1.85; padding:1.1rem; color:#88ff88; height:100%; overflow-y:auto; max-height:360px; box-sizing:border-box; }
+  .term-bar { display:flex; align-items:center; gap:5px; margin-bottom:.7rem; padding-bottom:.7rem; border-bottom:1px solid rgba(255,34,68,.1); position:sticky; top:0; background:#050608; z-index:2; }
   .td{width:9px;height:9px;border-radius:50%} .td.r{background:#ff4444} .td.y{background:#ffaa00} .td.g{background:#44ff44}
   .term-lbl { font-size:.62rem; color:var(--text-dim); margin:0 auto; letter-spacing:.08em; }
-  .tl    { display:block; padding:.05rem 0; border-bottom:1px solid rgba(255,255,255,.02); }
+  .tl    { display:block; padding:.05rem 0; border-bottom:1px solid rgba(255,255,255,.02); word-break:break-all; }
   .t-p   { color:var(--red); }
   .t-cmd { color:#fff; }
-  .t-ok  { color:#44aa44; }
   .t-w   { color:#ffcc22; }
   .t-i   { color:#4488ff; }
   .t-cur { display:inline-block; width:7px; height:13px; background:#88ff88; vertical-align:bottom; animation:rtBlink 1s step-end infinite; }
-  .term-empty { color:var(--text-dim); text-align:center; padding:2rem 0; font-size:.8rem; }
 
-  /* GAUGES */
+  /* GAUGES & METRICS */
   .rt-gauges { display:flex; flex-direction:column; gap:.9rem; }
   .gauge-hdr { display:flex; justify-content:space-between; font-family:var(--mono); font-size:.75rem; margin-bottom:.35rem; }
-  .gauge-lbl{color:var(--text)} .gauge-val{color:var(--red)}
-  .gauge-track { height:3px; background:rgba(255,255,255,.06); position:relative; overflow:hidden; }
-  .gauge-fill { height:100%; background:linear-gradient(90deg,var(--red-dim),var(--red)); box-shadow:0 0 7px var(--red-glow); transform:scaleX(0); transform-origin:left; animation:rtFill 1.4s .5s cubic-bezier(.4,0,.2,1) forwards; }
+  .gauge-lbl{color:var(--text)} .gauge-val{color:var(--red); font-weight:700;}
+  .gauge-track { height:4px; background:rgba(255,255,255,.06); position:relative; overflow:hidden; border-radius:2px; }
+  .gauge-fill { height:100%; background:linear-gradient(90deg,var(--red-dim),var(--red)); box-shadow:0 0 7px var(--red-glow); }
+  .metric-badge { display:inline-block; font-family:var(--mono); font-size:.62rem; padding:2px 6px; background:rgba(255,204,34,.1); border:1px solid rgba(255,204,34,.3); color:#ffcc22; text-transform:uppercase; margin-left:.5rem; border-radius:2px; vertical-align:middle; font-weight:700; }
+  .metric-note { font-family:var(--mono); font-size:.68rem; color:var(--text-dim); line-height:1.55; margin-top:.9rem; padding:.65rem; background:rgba(0,0,0,.35); border-left:2px solid var(--red); }
 
   /* LABS */
-  .rt-labs-wrap { animation:rtFadeUp .55s .42s ease both; }
+  .rt-labs-wrap { margin-bottom:1.3rem; animation:rtFadeUp .55s .42s ease both; }
   .rt-labs-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
   @media(max-width:820px){ .rt-labs-grid{ grid-template-columns:1fr; } }
-  .rt-lab { background:var(--panel); border:1px solid var(--border); padding:1.1rem; position:relative; overflow:hidden; text-decoration:none; display:block; transition:border-color .3s,transform .3s,box-shadow .3s; backdrop-filter:blur(6px); }
+  .rt-lab { background:var(--panel); border:1px solid var(--border); padding:1.2rem; position:relative; overflow:hidden; text-decoration:none; display:block; transition:border-color .3s,transform .3s,box-shadow .3s; backdrop-filter:blur(6px); }
   .rt-lab::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--red); transform:scaleX(0); transform-origin:left; transition:transform .3s; }
   .rt-lab:hover::after { transform:scaleX(1); }
   .rt-lab:hover { border-color:rgba(255,34,68,.48); background:rgba(255,34,68,.06); transform:translateY(-3px); box-shadow:0 10px 28px rgba(255,34,68,.13); }
   .rt-lab.active { border-color:rgba(255,34,68,.42); }
-  .lab-badge { position:absolute; top:.7rem; right:.7rem; font-family:var(--mono); font-size:.58rem; padding:2px 7px; border:1px solid var(--red); color:var(--red); letter-spacing:.1em; text-transform:uppercase; }
+  .lab-badge { position:absolute; top:.7rem; right:.7rem; font-family:var(--mono); font-size:.58rem; padding:2px 7px; border:1px solid var(--red); color:var(--red); letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
   .lab-badge.locked { border-color:var(--text-dim); color:var(--text-dim); }
   .lab-ico  { font-size:1.4rem; margin-bottom:.65rem; display:block; }
-  .lab-type { font-family:var(--mono); font-size:.62rem; color:var(--red); letter-spacing:.14em; text-transform:uppercase; margin-bottom:.3rem; }
-  .lab-name { font-size:.87rem; font-weight:700; color:#fff; margin-bottom:.45rem; }
-  .lab-desc { font-size:.76rem; color:var(--text-dim); line-height:1.5; }
-  .lab-btn  { margin-top:.85rem; display:inline-flex; align-items:center; gap:.35rem; font-family:var(--mono); font-size:.68rem; color:var(--red); letter-spacing:.1em; text-transform:uppercase; text-decoration:none; }
+  .lab-type { font-family:var(--mono); font-size:.62rem; color:var(--red); letter-spacing:.12em; text-transform:uppercase; margin-bottom:.3rem; font-weight:700; }
+  .lab-name { font-size:.92rem; font-weight:700; color:#fff; margin-bottom:.45rem; }
+  .lab-desc { font-size:.78rem; color:var(--text); line-height:1.5; }
+  .lab-btn  { margin-top:.85rem; display:inline-flex; align-items:center; gap:.35rem; font-family:var(--mono); font-size:.68rem; color:var(--red); letter-spacing:.08em; text-transform:uppercase; text-decoration:none; font-weight:700; }
   .lab-btn.dim { color:var(--text-dim); }
-  .rt-motto { background:rgba(255,34,68,.05); border:1px solid rgba(255,34,68,.18); padding:.75rem 1rem; font-family:var(--mono); font-size:.72rem; color:var(--red); line-height:1.6; margin-top:.9rem; }
-  .rt-motto span { color:#fff; }
+
+  /* INTERVIEW & QA ACCORDION / BOX */
+  .interview-box { background:rgba(255, 34, 68, 0.04); border:1px solid rgba(255,34,68,.25); padding:1.2rem; margin-top:1.3rem; border-radius:4px; }
+  .qa-item { margin-bottom:1rem; padding-bottom:.9rem; border-bottom:1px dashed rgba(255,255,255,.08); }
+  .qa-item:last-child { margin-bottom:0; padding-bottom:0; border-bottom:none; }
+  .qa-q { font-size:.92rem; font-weight:700; color:#fff; margin-bottom:.35rem; display:flex; align-items:flex-start; gap:.5rem; }
+  .qa-q span { color:var(--red); font-family:var(--mono); font-size:.8rem; }
+  .qa-a { font-size:.82rem; color:var(--text); line-height:1.65; margin-left:1.5rem; background:rgba(0,0,0,.25); padding:.6rem .8rem; border-left:2px solid var(--red); }
+  .qa-a strong { color:#fff; }
 
   /* WARNING */
-  .rt-warn { border:1px solid rgba(255,170,0,.28); background:rgba(255,170,0,.04); padding:.9rem 1.3rem; display:flex; align-items:center; gap:.9rem; margin-top:1.3rem; animation:rtFadeUp .55s .54s ease both; backdrop-filter:blur(4px); }
-  .warn-ico { font-size:1.1rem; flex-shrink:0; animation:rtPulse 2s ease infinite; }
-  .warn-text { font-family:var(--mono); font-size:.73rem; color:#ffaa00; line-height:1.55; letter-spacing:.02em; }
-  .warn-text strong { color:#ffcc44; }
+  .rt-warn { border:1px solid rgba(255,170,0,.35); background:rgba(255,170,0,.05); padding:1rem 1.4rem; display:flex; align-items:center; gap:1rem; margin-top:1.5rem; animation:rtFadeUp .55s .54s ease both; backdrop-filter:blur(4px); }
+  .warn-ico { font-size:1.3rem; flex-shrink:0; animation:rtPulse 2s ease infinite; color:#ffaa00; }
+  .warn-text { font-family:var(--mono); font-size:.76rem; color:#ffcc44; line-height:1.6; letter-spacing:.02em; }
+  .warn-text strong { color:#fff; }
 
   @keyframes rtFadeDown { from{opacity:0;transform:translateY(-18px)} to{opacity:1;transform:none} }
   @keyframes rtFadeUp   { from{opacity:0;transform:translateY(18px)}  to{opacity:1;transform:none} }
   @keyframes rtPulse    { 0%,100%{opacity:1} 50%{opacity:.45} }
   @keyframes rtBlink    { 0%,100%{opacity:1} 50%{opacity:0} }
-  @keyframes rtFill     { to{transform:scaleX(1)} }
 </style>
 
 <div class="rt-wrap">
 
-  <!-- HEADER -->
+  <!-- PHẦN ĐẦU TRANG (HEADER) -->
   <div class="rt-header">
     <div class="rt-badge">🎭</div>
     <div>
-      <div class="rt-tag">// adversarial simulation framework</div>
-      <h1 class="rt-title"><span>RED</span> TEAM</h1>
-      <p class="rt-subtitle">Offensive security operations — simulating adversarial attacks to identify vulnerabilities before real threats exploit them.</p>
+      <div class="rt-tag">// KHUNG MÔ PHỎNG TẤN CÔNG & KIỂM THỬ XÂM NHẬP (PENTEST)</div>
+      <h1 class="rt-title"><span>RED</span> TEAM & CHIẾN DỊCH TẤN CÔNG MÔ PHỎNG</h1>
+      <p class="rt-subtitle">
+        Khung kiến thức và môi trường thực hành tấn công an ninh mạng có kiểm soát — Mô phỏng đối thủ thực tế nhằm đánh giá khả năng phòng thủ của Đội Xanh (Blue Team), kiểm thử xâm nhập theo quy tắc kiểm thử (Rules of Engagement - RoE) và đảm bảo an toàn tối đa cho hệ thống.
+      </p>
       <div class="rt-status-bar">
-        <div class="rt-status-item"><div class="rt-dot"></div> ENGAGEMENT ACTIVE</div>
-        <div class="rt-status-item"><div class="rt-dot g"></div> LABS ONLINE</div>
-        <div class="rt-status-item"><div class="rt-dot y"></div> {{ metrics.total_attacks }} ATTACKS LOGGED</div>
+        <div class="rt-status-item"><div class="rt-dot"></div> CHẾ ĐỘ: PHÒNG LAB ĐÃ CẤP PHÉP</div>
+        <div class="rt-status-item"><div class="rt-dot g"></div> MÔ-ĐUN HOẠT ĐỘNG: LAB SQL INJECTION</div>
+        <div class="rt-status-item"><div class="rt-dot y"></div> ĐÃ LƯU {{ metrics.total_attacks|default(0) }} BẢN GHI NHẬT KÝ TẤN CÔNG</div>
       </div>
     </div>
   </div>
 
-  <!-- ROW 1: Activities + Terminal thật -->
+  <!-- PHẦN 1: PHÂN BIỆT RÕ RÀNG GIỮA ĐÁNH GIÁ LỖ HỔNG, PENTEST VÀ RED TEAM -->
+  <div class="rt-panel" style="margin-bottom:1.3rem;">
+    <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
+    <div class="rt-panel-hdr">
+      <div class="rt-panel-ico">⚖️</div>
+      <span class="rt-panel-title">Phân biệt vai trò: Đánh giá lỗ hổng (VA) vs Kiểm thử xâm nhập (Pentest) vs Red Team</span>
+      <span class="rt-panel-num">[NỀN TẢNG CỐT LÕI]</span>
+    </div>
+    <div class="rt-grid-3" style="margin-bottom:0;">
+      
+      <div class="comp-card">
+        <div class="comp-tag" style="color:#00e5ff;">01 · Bề rộng (Breadth)</div>
+        <div class="comp-title">Đánh giá lỗ hổng (Vulnerability Assessment)</div>
+        <div class="comp-desc">
+          Rà quét diện rộng trên toàn bộ hệ thống, chủ yếu dùng công cụ tự động để lập danh mục các lỗ hổng đã biết (cấu hình sai, thiếu bản vá bảo mật CVE). Không hoặc hiếm khi khai thác sâu; mục tiêu chính là phát hiện nhiều điểm yếu nhất có thể.
+        </div>
+        <div class="comp-meta">Đầu ra: Báo cáo danh sách lỗ hổng kèm điểm nghiêm trọng (CVSS).</div>
+      </div>
+
+      <div class="comp-card active-focus">
+        <div class="comp-tag" style="color:var(--red);">02 · Chiều sâu theo phạm vi (Scope-based)</div>
+        <div class="comp-title">Kiểm thử xâm nhập (Penetration Testing / Pentest)</div>
+        <div class="comp-desc">
+          Đánh giá an ninh trên một phạm vi mục tiêu xác định (Web, API, Di động, Hạ tầng mạng). Chuyên gia trực tiếp khai thác thử nghiệm (Proof of Concept - PoC) để chứng minh khả năng đột nhập thực tế trong khung thời gian thỏa thuận.
+        </div>
+        <div class="comp-meta">Đầu ra: Báo cáo bằng chứng PoC thực nghiệm & hướng dẫn vá lỗi kỹ thuật.</div>
+      </div>
+
+      <div class="comp-card">
+        <div class="comp-tag" style="color:#ffcc22;">03 · Theo mục tiêu & con người (Objective-based)</div>
+        <div class="comp-title">Red Teaming (Mô phỏng đối thủ thực tế)</div>
+        <div class="comp-desc">
+          Mô phỏng một chiến dịch tấn công thực thụ của tin tặc nhắm vào mục tiêu tối hậu (Crown Jewels - Tài sản cốt lõi). Đánh giá đồng thời cả 3 yếu tố: <strong>Con người, Quy trình và Công nghệ</strong>; đặc biệt kiểm tra khả năng phát hiện của Trung tâm giám sát an ninh (SOC) và Đội Xanh (Blue Team).
+        </div>
+        <div class="comp-meta">Đầu ra: Báo cáo năng lực phòng thủ, thời gian phát hiện/ứng phó & phối hợp Đội Tím (Purple Team).</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHẦN 2: QUY TRÌNH ENGAGEMENT & TÍNH THỰC TẾ CỦA KỸ THUẬT -->
+  <div class="rt-panel" style="margin-bottom:1.3rem;">
+    <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
+    <div class="rt-panel-hdr">
+      <div class="rt-panel-ico">🔄</div>
+      <span class="rt-panel-title">Quy trình chuẩn một chiến dịch an ninh tấn công thực tế</span>
+      <span class="rt-panel-num">[7 GIAI ĐOẠN]</span>
+    </div>
+
+    <div class="rt-steps">
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 01</span>
+        <div class="step-name">Xác định mục tiêu</div>
+        <div class="step-text">Xác định các tài sản cốt lõi cần bảo vệ (cơ sở dữ liệu khách hàng, máy chủ giao dịch, quyền kiểm soát hệ thống) và rủi ro kinh doanh trọng yếu.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 02</span>
+        <div class="step-name">Thống nhất Phạm vi & RoE</div>
+        <div class="step-text">Ký kết Quy tắc kiểm thử (Rules of Engagement - RoE), xác định danh sách IP/tên miền hợp lệ, kênh liên lạc khẩn cấp và quy tắc dừng kiểm thử khi có sự cố.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 03</span>
+        <div class="step-name">Trinh sát (Reconnaissance)</div>
+        <div class="step-text">Thu thập thông tin nguồn mở (OSINT) và chủ động rà quét bề mặt tấn công bên ngoài: dịch vụ đang mở, phiên bản phần mềm, thông tin rò rỉ.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 04</span>
+        <div class="step-name">Kiểm thử / Mô phỏng</div>
+        <div class="step-text">Thực thi kỹ thuật theo kịch bản: khai thác ứng dụng web, hệ thống mạng hoặc lạm dụng đặc quyền định danh trong giới hạn rủi ro cho phép.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 05</span>
+        <div class="step-name">Đánh giá phát hiện (Purple Team)</div>
+        <div class="step-text">Đối chiếu mốc thời gian tấn công với nhật ký hệ thống giám sát (SIEM/EDR) của Đội Xanh để tìm ra điểm mù và hoàn thiện cơ chế cảnh báo.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 06</span>
+        <div class="step-name">Lập báo cáo (Reporting)</div>
+        <div class="step-text">Viết tóm tắt cho ban lãnh đạo (Executive Summary) và hướng dẫn kỹ thuật chi tiết từng bước (Technical Remediation) cho đội ngũ vận hành.</div>
+      </div>
+
+      <div class="rt-step">
+        <span class="step-num">GIAI ĐOẠN 07</span>
+        <div class="step-name">Khắc phục & Kiểm tra lại (Retest)</div>
+        <div class="step-text">Phối hợp xác thực bản vá và kiểm tra lại toàn bộ lỗ hổng để đảm bảo điểm yếu đã được xử lý triệt để, không phát sinh lỗi phụ.</div>
+      </div>
+    </div>
+
+    <div class="metric-note" style="margin-top:1rem;">
+      💡 <strong>Lưu ý về lựa chọn kỹ thuật:</strong> Các kỹ thuật được áp dụng trong chiến dịch luôn phụ thuộc vào <em>mục tiêu, phạm vi đã thống nhất, mức độ rủi ro chấp nhận được và văn bản ủy quyền chính thức</em>. 
+      <strong>Phát triển mã khai thác (Exploit Development), lỗ hổng chưa công bố (0-day) hay hệ thống máy chủ chỉ huy (C2 - Command and Control) phức tạp KHÔNG PHẢI là hoạt động bắt buộc của mọi chiến dịch Red Team</strong>. Phần lớn các cuộc kiểm thử trong thực tế ưu tiên các kỹ thuật hiệu quả và ít rủi ro: tận dụng công cụ có sẵn trong hệ điều hành (Living-off-the-Land - LotL), khai thác sai sót trong cấu hình và đánh cắp/lạm dụng tài khoản định danh.
+    </div>
+  </div>
+
+  <!-- PHẦN 3: CÁC HOẠT ĐỘNG THỰC TẾ & TERMINAL NHẬT KÝ -->
   <div class="rt-grid-2">
 
+    <!-- Hoạt động thực tế -->
     <div class="rt-panel">
       <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
       <div class="rt-panel-hdr">
         <div class="rt-panel-ico">⚔️</div>
-        <span class="rt-panel-title">Key Activities</span>
-        <span class="rt-panel-num">[04 OPS]</span>
+        <span class="rt-panel-title">Các hoạt động tấn công thực tế</span>
+        <span class="rt-panel-num">[CHIẾN THUẬT & KỸ THUẬT]</span>
       </div>
       <div class="rt-acts">
         <div class="rt-act">
           <span class="act-num">01</span><span class="act-ico">🔍</span>
-          <div class="act-body"><div class="act-name">Penetration Testing</div><div class="act-desc">blackbox · greybox · whitebox</div></div>
-          <span class="act-tag tag-c">CRIT</span>
+          <div class="act-body">
+            <div class="act-name">Kiểm thử xâm nhập ứng dụng Web & API</div>
+            <div class="act-desc">OWASP Top 10 · Lỗ hổng SQL Injection · Lỗi kiểm soát truy cập (Broken Access Control) · SSRF</div>
+          </div>
+          <span class="act-tag tag-c">PHỔ BIẾN</span>
         </div>
+
         <div class="rt-act">
-          <span class="act-num">02</span><span class="act-ico">🎭</span>
-          <div class="act-body"><div class="act-name">Social Engineering</div><div class="act-desc">phishing · vishing · pretexting</div></div>
-          <span class="act-tag tag-h">HIGH</span>
+          <span class="act-num">02</span><span class="act-ico">🪪</span>
+          <div class="act-body">
+            <div class="act-name">Đánh giá an toàn định danh & Tài khoản</div>
+            <div class="act-desc">Dò mật khẩu diện rộng (Password spraying) · Leo thang đặc quyền · Lỗ hổng cấu hình sai</div>
+          </div>
+          <span class="act-tag tag-c">TRỌNG TÂM</span>
         </div>
+
         <div class="rt-act">
-          <span class="act-num">03</span><span class="act-ico">💣</span>
-          <div class="act-body"><div class="act-name">Exploit Development</div><div class="act-desc">0-day research · PoC creation</div></div>
-          <span class="act-tag tag-c">CRIT</span>
+          <span class="act-num">03</span><span class="act-ico">🎭</span>
+          <div class="act-body">
+            <div class="act-name">Mô phỏng tấn công phi kỹ thuật (Social Engineering)</div>
+            <div class="act-desc">Gửi thư lừa đảo (Phishing) mô phỏng có kiểm soát · Đánh giá nhận thức an toàn thông tin theo RoE</div>
+          </div>
+          <span class="act-tag tag-h">TÙY CHỌN ROE</span>
         </div>
+
         <div class="rt-act">
           <span class="act-num">04</span><span class="act-ico">🌐</span>
-          <div class="act-body"><div class="act-name">Network Intrusion</div><div class="act-desc">lateral movement · C2 ops</div></div>
-          <span class="act-tag tag-m">MED</span>
+          <div class="act-body">
+            <div class="act-name">Di chuyển ngang trong mạng nội bộ (Lateral Movement)</div>
+            <div class="act-desc">Tận dụng tiện ích quản trị sẵn có (PowerShell, WMI) · Hạn chế đưa mã độc lạ vào hệ thống</div>
+          </div>
+          <span class="act-tag tag-m">SAU XÂM NHẬP</span>
         </div>
       </div>
     </div>
 
-    <!-- Terminal với attack logs thật -->
+    <!-- Terminal với nhật ký AuditLog thực tế từ cơ sở dữ liệu -->
     <div class="rt-term">
       <div class="term-bar">
         <div class="td r"></div><div class="td y"></div><div class="td g"></div>
-        <span class="term-lbl">attack-log@red-team — live [{{ attack_logs|length }} events]</span>
+        <span class="term-lbl">dòng-nhật-ký@cyberseclab — ghi nhận [{{ attack_logs|length }} bản ghi]</span>
       </div>
       {% if attack_logs %}
         {% for log in attack_logs %}
           <span class="tl">
-            <span class="t-p">[{{ log.timestamp.strftime('%H:%M:%S') }}]</span>
+            <span class="t-p">[{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else 'LIVE' }}]</span>
             {% if 'SQLi' in log.action %}
-              <span class="t-w"> SQLi</span>
-            {% elif 'XSS' in log.action %}
-              <span class="t-w"> XSS</span>
-            {% elif 'RCE' in log.action %}
-              <span class="t-w"> RCE</span>
+              <span class="t-w"> [SQL INJECTION]</span>
+            {% elif 'Scan' in log.action %}
+              <span class="t-i"> [QUÉT CỔNG]</span>
+            {% elif 'Attack' in log.action or 'Detected' in log.action %}
+              <span class="t-w"> [CẢNH BÁO]</span>
             {% else %}
-              <span class="t-i"> ATK</span>
+              <span class="t-i"> [HOẠT ĐỘNG]</span>
             {% endif %}
             <span class="t-cmd"> {{ log.action }}</span>
           </span>
         {% endfor %}
-        <span class="tl"><span class="t-p">root@red-team:~$ </span><span class="t-cur"></span></span>
+        <span class="tl"><span class="t-p">cyberseclab@red-team:~$ </span><span class="t-cur"></span></span>
       {% else %}
-        <span class="tl"><span class="t-ok">// No attack events recorded yet.</span></span>
-        <span class="tl"><span class="t-ok">// Try the SQL Injection Lab below!</span></span>
+        <span class="tl"><span class="t-cmd">// Chưa ghi nhận sự kiện tấn công nào trong phiên làm việc này.</span></span>
+        <span class="tl"><span class="t-w">// Hãy truy cập phòng thực hành SQL Injection bên dưới để chạy thử payload và theo dõi nhật ký!</span></span>
         <span class="tl">&nbsp;</span>
-        <span class="tl"><span class="t-p">root@red-team:~$ </span><span class="t-cur"></span></span>
+        <span class="tl"><span class="t-p">cyberseclab@red-team:~$ </span><span class="t-cur"></span></span>
       {% endif %}
     </div>
 
   </div>
 
-  <!-- ROW 2: Metrics thật + Mission -->
+  <!-- PHẦN 4: CHỈ SỐ MINH HỌA & TIÊU CHÍ THÀNH CÔNG -->
   <div class="rt-grid-wide">
 
+    <!-- Bảng chỉ số: Ghi rõ dữ liệu minh họa -->
     <div class="rt-panel">
       <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
       <div class="rt-panel-hdr">
         <div class="rt-panel-ico">📊</div>
-        <span class="rt-panel-title">Attack Surface Metrics</span>
-        <span class="rt-panel-num">[LIVE DATA]</span>
+        <span class="rt-panel-title">Chỉ số phòng thực hành</span>
+        <span class="metric-badge">DỮ LIỆU MINH HỌA LAB (DEMO)</span>
+        <span class="rt-panel-num">[TÍNH TỪ NHẬT KÝ LAB]</span>
       </div>
+      
       <div class="rt-gauges">
         <div>
-          <div class="gauge-hdr"><span class="gauge-lbl">Web App Exposure (SQLi)</span><span class="gauge-val">{{ metrics.web_exposure }}%</span></div>
-          <div class="gauge-track"><div class="gauge-fill" style="width:{{ metrics.web_exposure }}%"></div></div>
+          <div class="gauge-hdr">
+            <span class="gauge-lbl">Mức độ phơi nhiễm ứng dụng Web (Mô phỏng theo tần suất SQLi)</span>
+            <span class="gauge-val">{{ metrics.web_exposure|default(0) }}%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:{{ metrics.web_exposure|default(0) }}%"></div>
+          </div>
         </div>
+
         <div>
-          <div class="gauge-hdr"><span class="gauge-lbl">Network Perimeter Risk (RCE)</span><span class="gauge-val">{{ metrics.network_risk }}%</span></div>
-          <div class="gauge-track"><div class="gauge-fill" style="width:{{ metrics.network_risk }}%;animation-delay:.65s"></div></div>
+          <div class="gauge-hdr">
+            <span class="gauge-lbl">Mức độ rủi ro mạng chu vi (Mô phỏng theo tần suất khai thác mạng)</span>
+            <span class="gauge-val">{{ metrics.network_risk|default(0) }}%</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:{{ metrics.network_risk|default(0) }}%; background:linear-gradient(90deg, #ff8800, var(--red));"></div>
+          </div>
         </div>
+
         <div>
-          <div class="gauge-hdr"><span class="gauge-lbl">Social Engineering (Phishing)</span><span class="gauge-val">{{ metrics.social_eng }}%</span></div>
-          <div class="gauge-track"><div class="gauge-fill" style="width:{{ metrics.social_eng }}%;animation-delay:.8s"></div></div>
+          <div class="gauge-hdr">
+            <span class="gauge-lbl">Tổng số hành vi tấn công được ghi nhận (Được lưu trong AuditLog)</span>
+            <span class="gauge-val">{{ metrics.total_attacks|default(0) }} lượt</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" style="width:{{ [metrics.total_attacks|default(0) * 10, 100]|min }}%; background:#00e5ff;"></div>
+          </div>
         </div>
-        <div>
-          <div class="gauge-hdr"><span class="gauge-lbl">Credential Attack Rate</span><span class="gauge-val">{{ metrics.credential }}%</span></div>
-          <div class="gauge-track"><div class="gauge-fill" style="width:{{ metrics.credential }}%;animation-delay:.95s;background:linear-gradient(90deg,#aa1122,#ff4444)"></div></div>
-        </div>
-        <div>
-          <div class="gauge-hdr"><span class="gauge-lbl">Patch Score (inverse attacks)</span><span class="gauge-val">{{ metrics.patch_score }}%</span></div>
-          <div class="gauge-track"><div class="gauge-fill" style="width:{{ metrics.patch_score }}%;animation-delay:1.1s;background:linear-gradient(90deg,#116600,#22cc44)"></div></div>
-        </div>
+      </div>
+
+      <div class="metric-note">
+        ⚠️ <strong>Minh bạch về số liệu (Dữ liệu minh họa):</strong> Các tỷ lệ phần trăm (%) hiển thị ở trên là <em>ước lượng minh họa nội bộ</em> trong phòng thực hành, được tính theo công thức: <code>min(attack_count * 20, 100)</code> dựa trên các bản ghi phát hiện trong bảng nhật ký AuditLog. Đây <strong>không phải là các chỉ số chuẩn hóa công nghiệp</strong> (như điểm đánh giá CVSS hay NIST SP 800-115) và không phản ánh số liệu trực tiếp từ hệ thống bên ngoài. Trong một dự án thực tế, Red Team đánh giá mức độ nguy hiểm dựa trên tác động nghiệp vụ thực tế (Business Impact) và đường dẫn xâm nhập thành công (Attack Path).
       </div>
     </div>
 
+    <!-- Tiêu chí thành công (What Good Looks Like) -->
     <div class="rt-panel">
       <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
       <div class="rt-panel-hdr">
         <div class="rt-panel-ico">🎯</div>
-        <span class="rt-panel-title">Mission</span>
+        <span class="rt-panel-title">Tiêu chí thành công của chiến dịch (What Good Looks Like)</span>
       </div>
-      <p style="font-size:.82rem;color:var(--text-dim);line-height:1.7;">
-        The Red Team operates as an <span style="color:var(--red);">adversarial force</span>, simulating real-world threat actors to expose gaps in defenses.
+      
+      <p style="font-size:.82rem;color:var(--text);line-height:1.6;margin-bottom:.8rem;">
+        Một chiến dịch Red Team thành công <strong>không đo bằng số lượng máy chủ bị chiếm quyền</strong>, mà đo bằng <strong>giá trị nâng cao năng lực an ninh mang lại cho tổ chức</strong>:
       </p>
-      <p style="font-size:.82rem;color:var(--text-dim);line-height:1.7;margin-top:.7rem;">
-        Operations span the full <span style="color:#dde0e8;">kill chain</span>: recon, exploitation, persistence, lateral movement.
-      </p>
-      <div class="rt-motto">
-        ATTACK SUMMARY:<br>
-        <span>SQLi: {{ metrics.sqli }} · XSS: {{ metrics.xss }} · RCE: {{ metrics.rce }}</span><br>
-        Total: <span>{{ metrics.total_attacks }} attacks logged</span>
+
+      <ul style="font-size:.8rem;color:var(--text);line-height:1.65;padding-left:1.2rem;margin-bottom:.8rem;">
+        <li><strong style="color:#fff;">Mục tiêu đạt được:</strong> Kiểm chứng xem đối thủ có thể tiếp cận Crown Jewels (Cơ sở dữ liệu khách hàng, máy chủ quản lý miền Domain Controller, mã nguồn cốt lõi) hay không.</li>
+        <li><strong style="color:#fff;">Độ bao phủ phát hiện:</strong> Đội Xanh (Blue Team) và trung tâm SOC phát hiện được bao nhiêu phần trăm hành vi trong chuỗi tấn công?</li>
+        <li><strong style="color:#fff;">Thời gian ứng phó:</strong> Đo lường thời gian từ lúc tấn công đến lúc phát hiện (TTD - Time to Detect) và thời gian cô lập rủi ro (TTR - Time to Respond).</li>
+        <li><strong style="color:#fff;">Khuyến nghị khắc phục khả thi:</strong> Cung cấp báo cáo chi tiết giúp đội phòng thủ xây dựng luật phát hiện (SIEM/Sigma Rule) và vá triệt để điểm mù.</li>
+      </ul>
+
+      <div style="background:rgba(255,34,68,.05);border:1px solid rgba(255,34,68,.18);padding:.6rem .8rem;font-family:var(--mono);font-size:.7rem;color:var(--red);">
+        Tư duy cốt lõi của Red Team là: <strong>Giúp Đội Xanh trở nên kiên cường và vững vàng hơn trước các mối đe dọa thực tế (Purple Team Mindset).</strong>
       </div>
     </div>
 
   </div>
 
-  <!-- LABS -->
+  <!-- PHẦN 5: CẨM NANG PHỎNG VẤN JUNIOR PENTESTER / RED TEAM -->
+  <div class="rt-panel" style="margin-bottom:1.3rem;">
+    <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
+    <div class="rt-panel-hdr">
+      <div class="rt-panel-ico">💼</div>
+      <span class="rt-panel-title">Chuẩn bị phỏng vấn Junior Pentester / Red Teamer — Trả lời 30 giây & Câu hỏi tình huống</span>
+      <span class="rt-panel-num">[CẨM NANG PHỎNG VẤN]</span>
+    </div>
+
+    <!-- Elevator Pitch 30s -->
+    <div style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);padding:.9rem 1.1rem;border-radius:4px;margin-bottom:1.2rem;">
+      <div style="font-family:var(--mono);font-size:.7rem;color:#00e5ff;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:.35rem;">
+        🎙️ Cách trả lời trong 30 giây: "Sự khác biệt giữa Red Team và Kiểm thử xâm nhập (Pentest) là gì?"
+      </div>
+      <p style="font-size:.85rem;color:#e8f0fe;line-height:1.65;font-style:italic;">
+        "Kiểm thử xâm nhập (Pentest) là đánh giá bảo mật <strong>theo phạm vi xác định (scoped)</strong> nhằm tìm kiếm và khai thác càng nhiều lỗ hổng càng tốt trên một mục tiêu cụ thể (Web, API, Network) trong khung thời gian thỏa thuận.<br>
+        Ngược lại, Red Teaming là diễn tập mô phỏng đối thủ thực tế <strong>theo mục tiêu trọng yếu (objective-based)</strong>, hoạt động bí mật nhằm kiểm tra đồng thời cả <strong>Con người, Quy trình và Công nghệ</strong> — với trọng tâm lớn nhất là đo lường năng lực phát hiện và thời gian phản ứng của Đội Xanh và trung tâm SOC."
+      </p>
+    </div>
+
+    <!-- Các câu hỏi thường gặp khi phỏng vấn Junior -->
+    <div class="interview-box" style="margin-top:0;">
+      
+      <div class="qa-item">
+        <div class="qa-q">
+          <span>[CÂU HỎI 1]</span> Nếu trong quá trình Pentest bạn phát hiện một lỗ hổng nghiêm trọng có nguy cơ làm gián đoạn dịch vụ (gây từ chối dịch vụ DoS hoặc mất dữ liệu), bạn sẽ xử lý thế nào?
+        </div>
+        <div class="qa-a">
+          <strong>Gợi ý trả lời:</strong> "Tôi sẽ <em>dừng ngay việc khai thác sâu</em> tại mức PoC (Proof of Concept - bằng chứng thực nghiệm) tối thiểu để đảm bảo an toàn vận hành cho khách hàng. Sau đó, tôi kiểm tra lại tài liệu Quy tắc kiểm thử (RoE) và liên hệ ngay với đầu mối kỹ thuật khẩn cấp (Emergency Contact) của khách hàng để bàn giao bằng chứng sơ bộ, hỗ trợ họ cô lập rủi ro trước khi tiếp tục các hạng mục kiểm thử khác."
+        </div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q">
+          <span>[CÂU HỎI 2]</span> Với vai trò là một Junior, bạn bắt đầu đánh giá một ứng dụng web như thế nào khi nhận phạm vi (scope)?
+        </div>
+        <div class="qa-a">
+          <strong>Gợi ý trả lời:</strong> "Tôi luôn bắt đầu bằng bước vẽ bản đồ ứng dụng (Application Mapping & Recon): tìm hiểu luồng nghiệp vụ chính, các cấp độ phân quyền người dùng (RBAC), danh sách API endpoint và các điểm nhập dữ liệu. Sau đó, tôi kiểm thử có phương pháp dựa trên các tiêu chuẩn như <em>OWASP Web Security Testing Guide (WSTG)</em>, ưu tiên các lỗi logic kiểm soát truy cập (Broken Access Control/IDOR) và Injection thay vì chỉ ỷ lại vào công cụ quét tự động."
+        </div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q">
+          <span>[CÂU HỎI 3]</span> Là thành viên Red Team, bạn có bắt buộc phải tự viết mã khai thác lỗ hổng chưa công bố (0-day) không?
+        </div>
+        <div class="qa-a">
+          <strong>Gợi ý trả lời:</strong> "Không bắt buộc. Nghiên cứu lỗ hổng 0-day và phát triển mã khai thác là kỹ năng chuyên sâu nhưng không phải yêu cầu tiên quyết cho mọi chiến dịch Red Team. Đa số các cuộc tấn công thực tế và chiến dịch mô phỏng thành công nhờ khai thác sai sót cấu hình (misconfigurations), đánh cắp tài khoản người dùng và kỹ thuật Living-off-the-Land (LotL) — tận dụng chính các công cụ quản trị sẵn có trên máy chủ nạn nhân để thực hiện mục tiêu."
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHẦN 6: CÁC PHÒNG THỰC HÀNH (LABS) -->
   <div class="rt-labs-wrap">
     <div class="rt-panel">
       <div class="ca tl"></div><div class="ca tr"></div><div class="ca bl"></div><div class="ca br"></div>
       <div class="rt-panel-hdr">
         <div class="rt-panel-ico">🧪</div>
-        <span class="rt-panel-title">Available Labs</span>
-        <span class="rt-panel-num">[AUTHORIZED ENVIRONMENTS]</span>
+        <span class="rt-panel-title">Phòng thực hành bảo mật được cấp phép (Authorized Labs)</span>
+        <span class="rt-panel-num">[MÔI TRƯỜNG CÔ LẬP]</span>
       </div>
       <div class="rt-labs-grid">
         <a href="{{ url_for('pentest_red') }}" class="rt-lab active">
-          <span class="lab-badge">LIVE</span>
+          <span class="lab-badge">ĐANG MỞ</span>
           <span class="lab-ico">💉</span>
-          <div class="lab-type">Web · INJECTION</div>
-          <div class="lab-name">SQL Injection Lab</div>
-          <div class="lab-desc">Test blind, union-based, and error-based SQLi. {{ metrics.sqli }} attempts logged.</div>
-          <span class="lab-btn">→ Launch Lab</span>
+          <div class="lab-type">Bảo mật Web · LỖ HỔNG TIÊM LỆNH (INJECTION)</div>
+          <div class="lab-name">Lab SQL Injection: So sánh Unsafe vs Safe Mode</div>
+          <div class="lab-desc">Thực hành đối chiếu trực tiếp giữa câu lệnh ghép chuỗi không an toàn và truy vấn tham số hóa Parameterized Query (Prepared Statement) trên cơ sở dữ liệu SQLite cô lập trong bộ nhớ.</div>
+          <span class="lab-btn">→ Mở phòng thực hành SQLi</span>
         </a>
-        <div class="rt-lab">
-          <span class="lab-badge locked">SOON</span>
+        <a href="{{ url_for('xss_lab') }}" class="rt-lab active">
+          <span class="lab-badge">ĐANG MỞ</span>
           <span class="lab-ico">🪝</span>
-          <div class="lab-type">Web · XSS</div>
-          <div class="lab-name">XSS Attack Lab</div>
-          <div class="lab-desc">Cross-site scripting: reflected, stored, and DOM-based attack simulation.</div>
-          <span class="lab-btn dim">→ Coming Soon</span>
-        </div>
-        <div class="rt-lab">
-          <span class="lab-badge locked">SOON</span>
+          <div class="lab-type">Bảo mật Web · PHÍA TRÌNH DUYỆT (CLIENT-SIDE)</div>
+          <div class="lab-name">Phòng thử nghiệm Cross-Site Scripting (XSS)</div>
+          <div class="lab-desc">Mô phỏng Reflected XSS trong iframe sandbox cô lập; so sánh HTML được dựng với văn bản đã escape và tìm hiểu CSP như một lớp phòng vệ bổ sung.</div>
+          <span class="lab-btn">→ Mở phòng thực hành XSS</span>
+        </a>
+        <a href="{{ url_for('credential_lab') }}" class="rt-lab active">
+          <span class="lab-badge">ĐANG MỞ</span>
           <span class="lab-ico">🔐</span>
-          <div class="lab-type">Network · CREDS</div>
-          <div class="lab-name">Credential Stuffing</div>
-          <div class="lab-desc">Simulate credential attacks against hardened authentication endpoints.</div>
-          <span class="lab-btn dim">→ Coming Soon</span>
-        </div>
+          <div class="lab-type">Định danh & Kiểm soát truy cập · XÁC THỰC</div>
+          <div class="lab-name">Phòng thủ tấn công Brute-force & Dò mật khẩu</div>
+          <div class="lab-desc">Mô phỏng đăng nhập trên tài khoản giả lập, giới hạn số lần thử và yêu cầu mã MFA demo; tìm hiểu trade-off của khóa tài khoản và cách giảm rủi ro dò mật khẩu.</div>
+          <span class="lab-btn">→ Mở phòng thực hành xác thực</span>
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- WARNING -->
+  <!-- CẢNH BÁO PHÁP LÝ & ĐẠO ĐỨC NGHỀ NGHIỆP -->
   <div class="rt-warn">
     <span class="warn-ico">⚠️</span>
     <div class="warn-text">
-      <strong>AUTHORIZATION REQUIRED</strong> — Red teaming must only be performed on systems you own or have <strong>explicit written permission</strong> to test. Unauthorized access is illegal. All lab environments are isolated and sandboxed for authorized use only.
+      <strong>YÊU CẦU ỦY QUYỀN VÀ ĐẠO ĐỨC NGHỀ NGHIỆP:</strong> Mọi hoạt động kiểm thử bảo mật (Pentest/Red Teaming) chỉ được phép tiến hành trên các hệ thống mà bạn sở hữu hoặc đã có <strong>văn bản đồng ý chính thức và thỏa thuận Quy tắc kiểm thử (Rules of Engagement - RoE)</strong> từ chủ quản hệ thống. Bất kỳ hành vi truy cập hoặc tấn công trái phép vào hệ thống của bên thứ ba là hành vi vi phạm pháp luật nghiêm trọng. Mọi môi trường lab trong dự án này đều được thiết lập cô lập trong bộ nhớ RAM phục vụ mục đích học tập và nghiên cứu phòng thủ.
     </div>
   </div>
 

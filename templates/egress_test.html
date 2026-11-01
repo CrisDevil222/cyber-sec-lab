@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Firewall Egress Tester — Cyber Security Lab{% endblock %}
+{% block content %}
+<div class="tool-box" style="border-color:rgba(0,170,255,.25);">
+  <h2><i class="fa-solid fa-fire-wall"></i> Firewall Egress Tester</h2>
+  <p>Kiểm tra xem mạng lưới hiện tại (như mạng trường học, công ty) có đang chặn (Drop/Reject) kết nối ra ngoài (Outbound/Egress) đối với HTTP/HTTPS hay các cổng mạng thông dụng không.</p>
+</div>
+
+<div class="tool-box">
+  <form method="POST" style="margin-top:.5rem;" id="scanForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+      <div>
+        <label>Danh sách Ports cần kiểm tra (Cách nhau bởi dấu phẩy)</label>
+        <input type="text" name="ports" value="{{ request.form.get('ports', '21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 465, 993, 995, 3306, 3389, 5432, 6379, 8080, 8443') }}" required id="portsInput">
+      </div>
+      <div>
+        <label>Máy chủ đích (Target Host - Để trống mặc định dùng <span style="color:var(--c);">portquiz.net</span>)</label>
+        <input type="text" name="target" placeholder="portquiz.net" value="{{ request.form.get('target', '') }}">
+      </div>
+    </div>
+    
+    <div style="margin-top:1.2rem;">
+      <button type="submit" id="scanBtn">
+        <i class="fa-solid fa-network-wired"></i> Start Test
+      </button>
+    </div>
+  </form>
+</div>
+
+{% if results %}
+<div class="tool-box" style="margin-top:0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+    <h2 style="margin:0;font-size:1rem;">
+      <i class="fa-solid fa-list-check"></i> Egress Test Results —
+      <span style="color:#fff;">{{ target_host }}</span>
+    </h2>
+    {% set blocked_count = results | selectattr('status', 'equalto', 'BLOCKED') | list | length %}
+    {% set open_count = results | selectattr('status', 'equalto', 'OPEN') | list | length %}
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <span class="badge badge-green">
+        {{ open_count }} OPEN
+      </span>
+      <span class="badge badge-red">
+        {{ blocked_count }} BLOCKED
+      </span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Port</th><th>Typical Service</th><th>Outbound Status</th><th>ISP / Firewall Policy</th></tr>
+    </thead>
+    <tbody>
+      {% set service_map = {
+        21: 'FTP', 22: 'SSH', 23: 'Telnet',
+        25: 'SMTP', 53: 'DNS', 80: 'HTTP',
+        110: 'POP3', 143: 'IMAP', 443: 'HTTPS',
+        445: 'SMB', 465: 'SMTPS', 993: 'IMAPS',
+        995: 'POP3S', 3306: 'MySQL', 3389: 'RDP',
+        5432: 'PostgreSQL', 5900: 'VNC', 6379: 'Redis',
+        8080: 'HTTP-Alt', 8443: 'HTTPS-Alt'
+      } %}
+      {% for r in results %}
+      {% set svc = service_map.get(r.port, 'Unknown') %}
+      <tr>
+        <td><code>{{ r.port }}/tcp</code></td>
+        <td style="color:var(--text-dim);">{{ svc }}</td>
+        <td>
+          {% if r.status == 'OPEN' %}
+            <span class="badge badge-green">● ALLOWED</span>
+          {% else %}
+            <span class="badge badge-red"><i class="fa-solid fa-ban"></i> BLOCKED</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.status == 'OPEN' %}
+            <span style="color:var(--text-dim);font-size:.8rem;">Không chặn</span>
+          {% else %}
+            <span style="color:#ff4444;font-size:.8rem;">Bị Firewall chặn/Lọc</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+document.getElementById('scanForm').addEventListener('submit', function() {
+  const btn = document.getElementById('scanBtn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing Connection...';
+  btn.disabled = true;
+});
+</script>
+{% endblock %}

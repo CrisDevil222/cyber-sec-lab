@@ -1,5 +1,9 @@
+import eventlet
+eventlet.monkey_patch()
+
 import os
 import time
+import threading
 import socket
 import platform
 import psutil
@@ -23,7 +27,7 @@ load_dotenv()
 # Đường dẫn gốc của project (dùng cho path tuyệt đối)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -94,7 +98,7 @@ socketio = SocketIO(app, async_mode='eventlet')
 ABUSEIPDB_KEY = os.environ.get('ABUSEIPDB_KEY', '')
 
 # Target URL (đọc từ .env)
-CTF_TARGET_URL = os.environ.get('TARGET_URL', 'http://35.247.183.253/')
+CTF_TARGET_URL = os.environ.get('TARGET_URL', 'http://42.96.19.122/')
 
 # Load ML model một lần khi khởi động (tránh load lại mỗi request)
 MODEL_PATH = os.path.join(BASE_DIR, 'phishing_model.pkl')
@@ -152,6 +156,25 @@ class TrafficLog(db.Model):
     endpoint = db.Column(db.String(200), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+class TargetPingLog(db.Model):
+    """Lưu lịch sử ping đến CTF target server."""
+    id = db.Column(db.Integer, primary_key=True)
+    target_url = db.Column(db.String(200), nullable=False)
+    status = db.Column(db.String(20), nullable=False)   # Online / Offline / Warning
+    http_code = db.Column(db.Integer, nullable=True)
+    latency_ms = db.Column(db.Integer, nullable=True)   # ms
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class TargetRequestLog(db.Model):
+    """Lưu các request từ Lab gửi đến CTF target."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    username = db.Column(db.String(150), nullable=True)
+    action = db.Column(db.String(200), nullable=False)  # mô tả hành động
+    target = db.Column(db.String(200), nullable=False)  # IP/URL đích
+    result = db.Column(db.String(100), nullable=True)   # kết quả (status, open, blocked...)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -173,6 +196,71 @@ def log_action(action):
         except Exception as e:
             app.logger.error(f"Lỗi log_action: {e}")
             db.session.rollback()
+
+def log_target_request(action, target, result=None):
+    """Ghi log request từ Lab ra target server và broadcast qua SocketIO."""
+    try:
+        username = current_user.username if current_user.is_authenticated else 'anonymous'
+        user_id = current_user.id if current_user.is_authenticated else None
+        entry = TargetRequestLog(
+            user_id=user_id,
+            username=username,
+            action=action,
+            target=target,
+            result=result
+        )
+        db.session.add(entry)
+        db.session.commit()
+        socketio.emit('target_request', {
+            'username': username,
+            'action': action,
+            'target': target,
+            'result': result or '',
+            'timestamp': entry.timestamp.strftime('%H:%M:%S')
+        }, namespace='/soc')
+    except Exception as e:
+        app.logger.error(f"Lỗi log_target_request: {e}")
+        db.session.rollback()
+
+def _ping_target_loop():
+    """Background thread: ping CTF target mỗi 1 giây, emit qua SocketIO."""
+    while True:
+        try:
+            url = os.environ.get('TARGET_URL', 'http://42.96.19.122/')
+            status, code, latency, color = 'Offline', None, None, '#ff4444'
+            try:
+                resp = requests.get(url, timeout=5, verify=False)
+                latency = round(resp.elapsed.total_seconds() * 1000)
+                code = resp.status_code
+                if code == 200:
+                    status, color = 'Online', '#00C851'
+                else:
+                    status, color = f'Warning ({code})', '#ffbb33'
+            except Exception:
+                pass
+
+            with app.app_context():
+                entry = TargetPingLog(
+                    target_url=url,
+                    status=status,
+                    http_code=code,
+                    latency_ms=latency
+                )
+                db.session.add(entry)
+                db.session.commit()
+
+                socketio.emit('target_ping', {
+                    'url': url,
+                    'status': status,
+                    'code': code or 'N/A',
+                    'latency': f'{latency} ms' if latency else 'N/A',
+                    'color': color,
+                    'timestamp': entry.timestamp.strftime('%H:%M:%S')
+                }, namespace='/soc')
+        except Exception as e:
+            with app.app_context():
+                app.logger.error(f"Ping loop error: {e}")
+        time.sleep(1)
 
 # ==========================================
 # 3. MIDDLEWARE (CHỐNG DDOS & SOC)
@@ -438,14 +526,63 @@ def xss_lab():
     result_unsafe = ""
     result_safe = ""
     if request.method == 'POST':
-        user_input = request.form.get('payload')
+        user_input = request.form.get('payload', '')[:2000]
         mode = request.form.get('mode')
         if mode == 'unsafe':
             result_unsafe = user_input
-            if '<script>' in user_input: log_action('XSS Attack Attempted (Reflected)')
+            if '<' in user_input: log_action('XSS Attack Attempted (Sandboxed Reflected Lab)')
         else:
             result_safe = user_input
     return render_template('xss.html', unsafe=result_unsafe, safe=result_safe)
+
+@app.route('/credential_lab', methods=['GET', 'POST'])
+@login_required
+def credential_lab():
+    # Isolated teaching simulation: fixed mock users, session-scoped attempts,
+    # no authentication against real accounts and no submitted password storage.
+    demo_users = {'alex': 'BlueTeam!23', 'analyst': 'LogReview!7', 'admin-demo': 'LabOnly!42'}
+    state = session.get('credential_lab', {'attempts': 0, 'locked': False, 'pending_user': None, 'authenticated': False})
+    message = None
+    message_type = 'info'
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'guess')
+        if action == 'reset':
+            state = {'attempts': 0, 'locked': False, 'pending_user': None, 'authenticated': False}
+            message = 'Đã đặt lại mô phỏng trong phiên hiện tại.'
+        elif action == 'otp':
+            otp = request.form.get('otp', '')[:12]
+            if state.get('pending_user') and otp == '246810':
+                state['authenticated'] = True
+                message, message_type = 'Xác thực mô phỏng thành công: mật khẩu đúng và mã MFA demo hợp lệ.', 'success'
+            else:
+                message, message_type = 'Mã MFA demo chưa đúng. Hãy dùng mã minh họa 246810.', 'error'
+        elif state.get('authenticated'):
+            message, message_type = 'Mô phỏng đã hoàn tất. Hãy đặt lại để thử lại.', 'info'
+        elif state.get('locked'):
+            message, message_type = 'Mô phỏng đã khóa sau 5 lần thử sai; hãy đặt lại để bắt đầu lại.', 'error'
+        else:
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')[:128]
+            if username not in demo_users:
+                message, message_type = 'Hãy chọn một tài khoản giả lập có sẵn.', 'error'
+            elif password == demo_users[username]:
+                state['pending_user'] = username
+                message, message_type = 'Mật khẩu mẫu đúng. Mô phỏng yêu cầu bước MFA tiếp theo.', 'success'
+            else:
+                state['attempts'] = min(int(state.get('attempts', 0)) + 1, 5)
+                if state['attempts'] >= 5:
+                    state['locked'] = True
+                    message = 'Đã đạt giới hạn 5 lần thử. Khóa phiên mô phỏng đã được kích hoạt.'
+                else:
+                    message = f'Mật khẩu không khớp. Còn {5 - state["attempts"]} lần thử trong mô phỏng.'
+                message_type = 'error'
+        session['credential_lab'] = state
+
+    return render_template('credential_lab.html', attempts=state.get('attempts', 0),
+                           locked=state.get('locked', False), pending_user=state.get('pending_user'),
+                           authenticated=state.get('authenticated', False), message=message,
+                           message_type=message_type)
 
 @app.route('/cmd_injection', methods=['GET', 'POST'])
 @login_required
@@ -687,6 +824,12 @@ def vulnerability():
                 status = 'CLOSED'
             results.append({'port': port, 'status': status})
 
+        # Log target request nếu scan vào CTF target
+        target_host = os.environ.get('TARGET_URL', '').replace('http://', '').replace('https://', '').split('/')[0].split(':')[0]
+        if target_host and (target_host in target or resolved_ip == target_host):
+            open_ports = [r['port'] for r in results if r['status'] == 'OPEN']
+            log_target_request('Port Scan', target, f"{len(open_ports)} port mở: {open_ports}")
+
     return render_template('vulnerability.html', results=results, error=error, target=target)
 
 @app.route('/malware', methods=['GET', 'POST'])
@@ -709,6 +852,45 @@ def assessment(): return render_template('assessment.html')
 @login_required
 def hmac_tool(): return render_template('hmac.html')
 
+@app.route('/egress_test', methods=['GET', 'POST'])
+@login_required
+def egress_test():
+    results = None
+    target_host = "portquiz.net"
+    if request.method == 'POST':
+        ports_input = request.form.get('ports', '21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 465, 993, 995, 3306, 3389, 5432, 6379, 8080, 8443')
+        target_override = request.form.get('target', '').strip()
+        if target_override:
+            target_host = target_override
+
+        ports_list = []
+        for p in ports_input.split(','):
+            p = p.strip()
+            if p.isdigit() and 1 <= int(p) <= 65535:
+                ports_list.append(int(p))
+
+        results = []
+        log_action('Egress/Firewall Test executed')
+        
+        for port in ports_list:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(0.8)
+                conn_result = sock.connect_ex((target_host, port))
+                sock.close()
+                status = 'OPEN' if conn_result == 0 else 'BLOCKED'
+            except Exception:
+                status = 'ERROR'
+            results.append({'port': port, 'status': status})
+
+        # Log nếu egress test nhắm vào CTF target
+        ctf_host = os.environ.get('TARGET_URL', '').replace('http://', '').replace('https://', '').split('/')[0].split(':')[0]
+        if ctf_host and ctf_host in target_host:
+            open_p = [r['port'] for r in results if r['status'] == 'OPEN']
+            log_target_request('Egress Test', target_host, f"{len(open_p)} open: {open_p}")
+
+    return render_template('egress_test.html', results=results, target_host=target_host)
+
 
 # ==========================================
 # 7. KHỞI TẠO DATABASE
@@ -716,6 +898,8 @@ def hmac_tool(): return render_template('hmac.html')
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # Xóa bảng cũ nếu schema thay đổi
+        db.session.commit()
         
         if not User.query.filter_by(username='admin').first():
             admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
@@ -742,5 +926,11 @@ if __name__ == '__main__':
         print(">>> Database Initialized successfully.")
         
     is_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+
+    # Khởi động background thread ping target
+    ping_thread = threading.Thread(target=_ping_target_loop, daemon=True)
+    ping_thread.start()
+    print(">>> Target Ping Monitor started (interval: 10s)")
+
     # Chạy bằng SocketIO (thay vì app.run) để hỗ trợ WebSockets cùng với Flask
     socketio.run(app, host='0.0.0.0', port=5000, debug=is_debug, use_reloader=False)

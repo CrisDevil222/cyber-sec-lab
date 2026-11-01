@@ -1103,6 +1103,183 @@ def submit_quiz():
             'explanation': 'Chưa chính xác. Hãy đọc lại phần lý thuyết tương ứng ở trên và thử lại!'
         })
 
+
+# ==========================================
+# MODULE 2: NETWORK SIMULATOR (DHCP, DNS, SOCKS5)
+# ==========================================
+DNS_LOG_SAMPLES = [
+    {"id": 0, "time": "14:20:01", "client": "10.0.1.45", "query": "www.google.com", "qtype": "A", "size": 48, "entropy": 2.1, "suspicious": False},
+    {"id": 1, "time": "14:20:03", "client": "10.0.1.12", "query": "api.github.com", "qtype": "A", "size": 52, "entropy": 2.4, "suspicious": False},
+    {"id": 2, "time": "14:20:06", "client": "10.0.1.88", "query": "update.microsoft.com", "qtype": "A", "size": 56, "entropy": 2.3, "suspicious": False},
+    {"id": 3, "time": "14:20:09", "client": "10.0.1.99", "query": "a8f93bc41029e8c71d.c2-exfil.dnstunnel.darkops.net", "qtype": "TXT", "size": 214, "entropy": 4.85, "suspicious": True},
+    {"id": 4, "time": "14:20:12", "client": "10.0.1.45", "query": "connectivitycheck.gstatic.com", "qtype": "A", "size": 44, "entropy": 2.2, "suspicious": False},
+    {"id": 5, "time": "14:20:15", "client": "10.0.1.20", "query": "login.live.com", "qtype": "A", "size": 60, "entropy": 2.5, "suspicious": False},
+    {"id": 6, "time": "14:20:18", "client": "10.0.1.33", "query": "cdn.cloudflare.net", "qtype": "A", "size": 50, "entropy": 2.3, "suspicious": False},
+    {"id": 7, "time": "14:20:21", "client": "10.0.1.15", "query": "s3.amazonaws.com", "qtype": "A", "size": 54, "entropy": 2.4, "suspicious": False},
+    {"id": 8, "time": "14:20:25", "client": "10.0.1.77", "query": "static.xx.fbcdn.net", "qtype": "A", "size": 58, "entropy": 2.6, "suspicious": False},
+    {"id": 9, "time": "14:20:29", "client": "10.0.1.99", "query": "aHR0cHM6Ly9hdHRhY2tlci5jb20vcGF5bG9hZA.cmd.beacon-sync.xyz", "qtype": "TXT", "size": 248, "entropy": 4.92, "suspicious": True},
+    {"id": 10, "time": "14:20:33", "client": "10.0.1.18", "query": "office.com", "qtype": "A", "size": 42, "entropy": 2.0, "suspicious": False},
+    {"id": 11, "time": "14:20:36", "client": "10.0.1.52", "query": "slack.com", "qtype": "A", "size": 46, "entropy": 2.1, "suspicious": False},
+    {"id": 12, "time": "14:20:40", "client": "10.0.1.61", "query": "dns.google", "qtype": "A", "size": 40, "entropy": 1.9, "suspicious": False},
+    {"id": 13, "time": "14:20:44", "client": "10.0.1.22", "query": "t.co", "qtype": "A", "size": 38, "entropy": 1.8, "suspicious": False},
+    {"id": 14, "time": "14:20:48", "client": "10.0.1.80", "query": "mail.google.com", "qtype": "A", "size": 52, "entropy": 2.3, "suspicious": False},
+    {"id": 15, "time": "14:20:52", "client": "10.0.1.99", "query": "stage2-chunk04-enc-payload-7718aa.data-pipe.exfil.org", "qtype": "TXT", "size": 198, "entropy": 4.78, "suspicious": True},
+    {"id": 16, "time": "14:20:56", "client": "10.0.1.11", "query": "zoom.us", "qtype": "A", "size": 44, "entropy": 2.1, "suspicious": False},
+    {"id": 17, "time": "14:21:00", "client": "10.0.1.34", "query": "wikipedia.org", "qtype": "A", "size": 48, "entropy": 2.2, "suspicious": False}
+]
+
+DHCP_PACKETS = {
+    1: """[GÓI TIN 1: DHCP DISCOVER]
+Frame 1: 342 bytes on wire
+Ethernet II, Src: 00:0c:29:1a:2b:3c (Client_VM), Dst: ff:ff:ff:ff:ff:ff (Broadcast)
+Internet Protocol Version 4, Src: 0.0.0.0, Dst: 255.255.255.255
+User Datagram Protocol, Src Port: 68 (bootpc), Dst Port: 67 (bootps)
+Bootstrap Protocol (DHCP Discover)
+    Message type: Boot Request (1)
+    Hardware type: Ethernet (0x01)
+    Client MAC address: 00:0c:29:1a:2b:3c
+    Client IP address: 0.0.0.0 (Chưa có IP)
+    Your (client) IP address: 0.0.0.0
+    Option 53: DHCP Discover
+    Option 55: Parameter Request List (Subnet Mask, Router, DNS Server)
+    Ghi chú: Client phát sóng broadcast trên toàn LAN tìm kiếm bất kỳ máy chủ DHCP nào khả dụng.""",
+
+    2: """[GÓI TIN 2: DHCP OFFER]
+Frame 2: 342 bytes on wire
+Ethernet II, Src: 00:50:56:c0:00:08 (DHCP_Server), Dst: 00:0c:29:1a:2b:3c (Client_VM)
+Internet Protocol Version 4, Src: 192.168.1.1, Dst: 192.168.1.105
+User Datagram Protocol, Src Port: 67 (bootps), Dst Port: 68 (bootpc)
+Bootstrap Protocol (DHCP Offer)
+    Message type: Boot Reply (2)
+    Server IP address: 192.168.1.1
+    Your (client) IP address: 192.168.1.105 (Đề xuất gán địa chỉ này)
+    Option 53: DHCP Offer
+    Option 1: Subnet Mask (255.255.255.0)
+    Option 3: Router / Default Gateway (192.168.1.1)
+    Option 51: IP Address Lease Time (86400s - 24 giờ)
+    Option 54: DHCP Server Identifier (192.168.1.1)
+    Ghi chú: Server hợp lệ gửi đề xuất IP kèm thông số Gateway và thời hạn thuê (Lease).""",
+
+    3: """[GÓI TIN 3: DHCP REQUEST]
+Frame 3: 342 bytes on wire
+Ethernet II, Src: 00:0c:29:1a:2b:3c (Client_VM), Dst: ff:ff:ff:ff:ff:ff (Broadcast)
+Internet Protocol Version 4, Src: 0.0.0.0, Dst: 255.255.255.255
+User Datagram Protocol, Src Port: 68 (bootpc), Dst Port: 67 (bootps)
+Bootstrap Protocol (DHCP Request)
+    Message type: Boot Request (1)
+    Client MAC address: 00:0c:29:1a:2b:3c
+    Requested IP Address: 192.168.1.105
+    Option 54: DHCP Server Identifier (192.168.1.1)
+    Option 53: DHCP Request
+    Ghi chú: Client phát broadcast xác nhận chọn IP 192.168.1.105 từ Server 192.168.1.1.""",
+
+    4: """[GÓI TIN 4: DHCP ACKNOWLEDGE (ACK)]
+Frame 4: 342 bytes on wire
+Ethernet II, Src: 00:50:56:c0:00:08 (DHCP_Server), Dst: 00:0c:29:1a:2b:3c (Client_VM)
+Internet Protocol Version 4, Src: 192.168.1.1, Dst: 192.168.1.105
+User Datagram Protocol, Src Port: 67 (bootps), Dst Port: 68 (bootpc)
+Bootstrap Protocol (DHCP ACK)
+    Message type: Boot Reply (2)
+    Your (client) IP address: 192.168.1.105 (Đã kích hoạt chính thức)
+    Option 53: DHCP ACK
+    Option 51: Lease Time: 86400s
+    Option 6: Domain Name Server: 1.1.1.1, 8.8.8.8
+    Option 3: Router: 192.168.1.1
+    [TRẠNG THÁI]: Gán địa chỉ IP thành công! Client đã sẵn sàng truyền thông tin."""
+}
+
+@app.route('/network_sim')
+@login_required
+def network_sim():
+    return render_template('network_sim.html', dns_logs=DNS_LOG_SAMPLES)
+
+@app.route('/network_sim/dhcp_step', methods=['POST'])
+@login_required
+def network_sim_dhcp_step():
+    data = request.get_json(silent=True) or request.form
+    step = int(data.get('step', 1))
+    packet = DHCP_PACKETS.get(step, 'Gói tin không tồn tại.')
+    return jsonify({'status': 'success', 'step': step, 'packet': packet})
+
+@app.route('/network_sim/check_dhcp_quiz', methods=['POST'])
+@login_required
+def check_dhcp_quiz():
+    data = request.get_json(silent=True) or request.form
+    answer_idx = int(data.get('answer_idx', -1))
+    # 0: Rogue DHCP server & MitM; 1: Xóa file hệ thống; 2: Đổi mật khẩu BIOS
+    if answer_idx == 0:
+        current_user.score += 15
+        log_action('Completed Network Sim: DHCP DORA & Rogue Defense')
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'correct': True,
+            'points': 15,
+            'new_score': current_user.score,
+            'explanation': 'Chính xác! Nếu không có DHCP Snooping trên switch Layer 2, kẻ tấn công có thể dựng Rogue DHCP Server để cấp phát Default Gateway và DNS giả mạo, dẫn hướng lưu lượng nạn nhân qua máy kẻ tấn công nhằm nghe lén và đánh cắp dữ liệu (Man-in-the-Middle).'
+        })
+    else:
+        return jsonify({
+            'status': 'success',
+            'correct': False,
+            'explanation': 'Chưa chính xác. Thiếu DHCP Snooping cho phép kẻ tấn công dựng máy chủ DHCP giả mạo (Rogue DHCP) cấp phát Gateway/DNS độc hại.'
+        })
+
+@app.route('/network_sim/check_dns_tunneling', methods=['POST'])
+@login_required
+def check_dns_tunneling():
+    data = request.get_json(silent=True) or request.form
+    selected_ids = data.get('selected_ids', [])
+    try:
+        selected_set = {int(x) for x in selected_ids}
+    except Exception:
+        selected_set = set()
+        
+    actual_suspicious = {3, 9, 15}
+    if selected_set == actual_suspicious:
+        current_user.score += 15
+        log_action('Completed Network Sim: DNS Tunneling Detection')
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'correct': True,
+            'points': 15,
+            'new_score': current_user.score,
+            'explanation': 'Xuất sắc! Bạn đã nhận diện chính xác 3 dòng DNS Tunneling (ID #3, #9, #15) dựa trên các chỉ dấu then chốt: (1) Độ dài subdomain bất thường (>50 ký tự), (2) Độ ngẫu nhiên Shannon Entropy cao (>4.5, đặc trưng của dữ liệu mã hóa base64/hex), (3) Truy vấn bản ghi TXT với kích thước phản hồi lớn (>190 bytes).'
+        })
+    else:
+        return jsonify({
+            'status': 'success',
+            'correct': False,
+            'explanation': 'Chưa chính xác. Gợi ý: Hãy quan sát các dòng có bản ghi TXT, độ dài subdomain dài bất thường và chỉ số Entropy cao (>4.5). Có chính xác 3 dòng đáng ngờ!'
+        })
+
+@app.route('/network_sim/check_socks5_pivot', methods=['POST'])
+@login_required
+def check_socks5_pivot():
+    data = request.get_json(silent=True) or request.form
+    route_choice = data.get('route_choice')
+    cmd_choice = data.get('cmd_choice')
+    
+    # Đúng: route_choice == 'dmz_pivot' và cmd_choice == 'proxychains'
+    if route_choice == 'dmz_pivot' and cmd_choice == 'proxychains':
+        current_user.score += 15
+        log_action('Completed Network Sim: SOCKS5 Pivot & Routing')
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'correct': True,
+            'points': 15,
+            'new_score': current_user.score,
+            'explanation': 'Chính xác! Attacker không thể kết nối trực tiếp tới Internal-AD do Firewall External DROP. Do đó, Attacker tận dụng máy Compromised-Web (10.0.1.50) trong DMZ làm SOCKS5 proxy server (Chisel/Ligolo), kết hợp lệnh proxychains trên máy Kali để định tuyến lưu lượng xuyên qua tunnel vào thẳng Domain Controller (10.0.3.5).'
+        })
+    else:
+        return jsonify({
+            'status': 'success',
+            'correct': False,
+            'explanation': 'Đường đi hoặc cấu hình chưa đúng. Nhớ rằng Firewall External chặn kết nối trực tiếp từ Internet vào mạng nội bộ; bạn phải bắc cầu (pivot) qua máy DMZ đã chiếm quyền!'
+        })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

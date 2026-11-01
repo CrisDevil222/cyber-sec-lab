@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+{% block title %}Network Simulator — DHCP DORA, DNS Tunneling & SOCKS5 Pivot{% endblock %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  .net-wrap {
+    max-width: 1150px;
+    margin: 0 auto 3rem;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+  }
+  .net-banner {
+    background: rgba(15, 17, 24, 0.88);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 4px;
+    padding: 1.6rem 2rem;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+  }
+  .net-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: #00ff88;
+  }
+  .badge-net {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .65rem;
+    padding: 2px 8px;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #00ff88;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .score-badge {
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .85rem;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.35);
+    color: #00ff88;
+    padding: .4rem .9rem;
+    border-radius: 4px;
+  }
+
+  /* TABS NAVIGATION */
+  .tabs-nav {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: .5rem;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: rgba(10, 14, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    padding: .75rem 1.4rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .tab-btn:hover {
+    color: #fff;
+    background: rgba(0, 229, 255, 0.08);
+  }
+  .tab-btn.active {
+    color: #00e5ff;
+    border-color: #00e5ff;
+    border-bottom: 2px solid #00e5ff;
+    background: rgba(0, 229, 255, 0.12);
+    box-shadow: 0 -4px 12px rgba(0, 229, 255, 0.1);
+  }
+  .tab-pane {
+    display: none;
+    animation: fadeIn .3s ease;
+  }
+  .tab-pane.active {
+    display: block;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* TIMELINE DORA */
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  @media(max-width:860px){
+    .timeline { grid-template-columns: 1fr; }
+  }
+  .time-step {
+    background: rgba(10, 14, 20, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 1.2rem;
+    position: relative;
+    transition: all .3s;
+  }
+  .time-step.active-step {
+    border-color: var(--c);
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+  }
+  .step-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .7rem;
+    color: var(--c);
+    font-weight: 700;
+    display: block;
+    margin-bottom: .3rem;
+  }
+  .step-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: .4rem;
+  }
+  .step-desc {
+    font-size: .8rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: .8rem;
+  }
+  .btn-send-packet {
+    width: 100%;
+    padding: .5rem;
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+    color: #00e5ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .75rem;
+    font-weight: 700;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+  }
+  .btn-send-packet:hover {
+    background: rgba(0, 229, 255, 0.25);
+    color: #fff;
+  }
+  .wireshark-box {
+    background: #030508;
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    border-radius: 4px;
+    padding: 1.2rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .78rem;
+    line-height: 1.7;
+    color: #88ff88;
+    white-space: pre-wrap;
+    max-height: 280px;
+    overflow-y: auto;
+    margin: 1rem 0;
+  }
+
+  /* DNS TABLE */
+  .dns-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .76rem;
+    margin: 1rem 0;
+  }
+  .dns-table th, .dns-table td {
+    padding: .6rem .8rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+  }
+  .dns-table th {
+    background: rgba(0, 0, 0, 0.6);
+    color: #00e5ff;
+    font-size: .72rem;
+  }
+  .dns-table tr:hover {
+    background: rgba(0, 229, 255, 0.03);
+  }
+  .dns-table input[type="checkbox"] {
+    accent-color: #ff2244;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* SVG NETWORK DIAGRAM */
+  .diagram-container {
+    background: #06080c;
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 4px;
+    padding: 1.5rem;
+    text-align: center;
+    margin: 1.2rem 0;
+    overflow-x: auto;
+  }
+
+  /* QUIZ BOX */
+  .quiz-sim-card {
+    background: rgba(12, 16, 24, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 1.4rem;
+    margin-top: 1.2rem;
+  }
+</style>
+
+<div class="net-wrap">
+
+  <!-- BANNER TỔNG QUAN -->
+  <div class="net-banner">
+    <div class="score-badge">
+      <i class="fa-solid fa-coins"></i> ĐIỂM: <span id="current-score-val">{{ current_user.score }}</span> pts
+    </div>
+    <span class="badge-net"><i class="fa-solid fa-network-wired"></i> MODULE 2 · PHÒNG MÔ PHỎNG DỊCH VỤ MẠNG & PIVOTING</span>
+    <h1 style="font-size:1.85rem;color:#fff;margin-bottom:.4rem;">
+      <i class="fa-solid fa-diagram-project" style="color:#00ff88;"></i> Network Security Protocol Simulator
+    </h1>
+    <p style="font-size:.9rem;color:var(--text);line-height:1.6;max-width:850px;">
+      Mô phỏng trực quan 3 cơ chế mạng trọng yếu: <strong>Quy trình DHCP DORA & Rogue DHCP Defense</strong>, <strong>Phân tích dấu hiệu DNS Tunneling</strong> và <strong>Định tuyến SOCKS5 Pivoting xuyên Firewall DMZ</strong>.
+    </p>
+  </div>
+
+  <!-- TABS HEADER -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab(event, 'tab-dhcp')">
+      <i class="fa-solid fa-satellite-dish"></i> Tab 1: DHCP DORA & Rogue Defense
+    </button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-dns')">
+      <i class="fa-solid fa-wave-square"></i> Tab 2: DNS Tunneling Detection
+    </button>
+    <button class="tab-btn" onclick="switchTab(event, 'tab-socks5')">
+      <i class="fa-solid fa-shuffle"></i> Tab 3: SOCKS5 Pivoting Simulation
+    </button>
+  </div>
+
+  <!-- TAB 1: DHCP DORA -->
+  <div id="tab-dhcp" class="tab-pane active">
+    <div class="tool-box" style="border-color:rgba(0,255,136,.3);">
+      <h2 style="font-size:1.15rem;color:#00ff88;margin-bottom:.4rem;">
+        <i class="fa-solid fa-timeline"></i> Quy trình cấp phát IP động: DHCP DORA (4 Bước)
+      </h2>
+      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:1rem;">
+        Bấm nút <strong>"Gửi gói tin"</strong> tại từng bước để xem cấu trúc bản tin Wireshark mô phỏng tương ứng:
+      </p>
+
+      <div class="timeline">
+        <div class="time-step active-step" id="step-box-1">
+          <span class="step-label">BƯỚC 1 · CLIENT &rarr; LAN</span>
+          <div class="step-name">DHCP Discover</div>
+          <div class="step-desc">Client phát sóng broadcast (255.255.255.255) tìm kiếm máy chủ DHCP.</div>
+          <button class="btn-send-packet" onclick="sendDhcpStep(1)"><i class="fa-solid fa-paper-plane"></i> Gửi Discover</button>
+        </div>
+
+        <div class="time-step" id="step-box-2">
+          <span class="step-label">BƯỚC 2 · SERVER &rarr; CLIENT</span>
+          <div class="step-name">DHCP Offer</div>
+          <div class="step-desc">Server đề xuất địa chỉ IP, Subnet Mask và Gateway cho Client.</div>
+          <button class="btn-send-packet" onclick="sendDhcpStep(2)"><i class="fa-solid fa-paper-plane"></i> Gửi Offer</button>
+        </div>
+
+        <div class="time-step" id="step-box-3">
+          <span class="step-label">BƯỚC 3 · CLIENT &rarr; SERVER</span>
+          <div class="step-name">DHCP Request</div>
+          <div class="step-desc">Client broadcast xác nhận đồng ý nhận dải IP từ server chỉ định.</div>
+          <button class="btn-send-packet" onclick="sendDhcpStep(3)"><i class="fa-solid fa-paper-plane"></i> Gửi Request</button>
+        </div>
+
+        <div class="time-step" id="step-box-4">
+          <span class="step-label">BƯỚC 4 · SERVER &rarr; CLIENT</span>
+          <div class="step-name">DHCP ACK</div>
+          <div class="step-desc">Server xác nhận chốt hợp đồng thuê (Lease) và hoàn tất cấu hình.</div>
+          <button class="btn-send-packet" onclick="sendDhcpStep(4)"><i class="fa-solid fa-paper-plane"></i> Gửi ACK</button>
+        </div>
+      </div>
+
+      <h3 style="font-size:.8rem;color:var(--text-dim);margin-top:1.2rem;">// CHI TIẾT BẢN TIN MÔ PHỎNG (WIRESHARK PACKET DISSECTION):</h3>
+      <div class="wireshark-box" id="dhcp-packet-view">Nhấn nút "Gửi gói tin" ở trên để xem cấu trúc chi tiết bản tin DHCP...</div>
+
+      <!-- CÂU HỎI KIỂM TRA PHÒNG THỦ DHCP -->
+      <div class="quiz-sim-card">
+        <h3 style="font-size:1rem;color:#fff;margin-bottom:.6rem;">
+          <i class="fa-solid fa-shield-virus" style="color:#ffcc00;"></i> Câu hỏi phòng thủ: Tấn công Rogue DHCP Server
+        </h3>
+        <p style="font-size:.86rem;color:var(--text);line-height:1.6;margin-bottom:1rem;">
+          "Nếu trong mạng LAN không bật tính năng bảo vệ <strong>DHCP Snooping</strong> trên Switch Layer 2, kẻ tấn công có thể làm gì để kiểm soát lưu lượng nạn nhân?"
+        </p>
+
+        <form onsubmit="submitDhcpQuiz(event)">
+          <div style="display:flex;flex-direction:column;gap:.6rem;font-size:.85rem;">
+            <label class="option-label">
+              <input type="radio" name="dhcp_answer" value="0" required>
+              <span><strong>Dựng Rogue DHCP Server:</strong> Cấp phát địa chỉ IP kèm Default Gateway và DNS Server trỏ về máy kẻ tấn công, từ đó nghe lén toàn bộ lưu lượng (Man-in-the-Middle).</span>
+            </label>
+            <label class="option-label">
+              <input type="radio" name="dhcp_answer" value="1">
+              <span>Xóa sạch toàn bộ tệp tin hệ điều hành của client từ xa qua cổng UDP 67.</span>
+            </label>
+            <label class="option-label">
+              <input type="radio" name="dhcp_answer" value="2">
+              <span>Tự động giải mã mật khẩu BIOS của tất cả máy tính đang kết nối trong cùng mạng.</span>
+            </label>
+          </div>
+          <button type="submit" class="btn-danger" style="margin-top:1rem;padding:.6rem 1.4rem;">
+            <i class="fa-solid fa-check"></i> Xác nhận câu trả lời (+15 pts)
+          </button>
+        </form>
+        <div id="dhcp-quiz-feedback" style="display:none;margin-top:.8rem;padding:.8rem;border-radius:3px;font-size:.84rem;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 2: DNS TUNNELING DETECTION -->
+  <div id="tab-dns" class="tab-pane">
+    <div class="tool-box" style="border-color:rgba(255,45,85,.35);">
+      <h2 style="font-size:1.15rem;color:var(--c2);margin-bottom:.4rem;">
+        <i class="fa-solid fa-filter"></i> Phân tích Nhật ký & Phát hiện DNS Tunneling
+      </h2>
+      <p style="font-size:.85rem;color:var(--text);line-height:1.6;margin-bottom:1rem;">
+        Dưới đây là 18 bản ghi truy vấn DNS trích xuất từ Firewall/SIEM. Trong số đó có <strong>chính xác 3 bản ghi</strong> là dấu hiệu của kênh liên lạc chỉ huy hoặc tuồn dữ liệu ẩn (DNS Tunneling / C2).<br>
+        <span style="color:#ffcc00;">Gợi ý điều tra:</span> Chú ý tới <em>độ dài Subdomain bất thường</em>, <em>chỉ số Shannon Entropy cao (>4.5)</em> và <em>loại bản ghi TXT mang kích thước lớn</em>.
+      </p>
+
+      <div style="overflow-x:auto;">
+        <table class="dns-table">
+          <thead>
+            <tr>
+              <th style="width:40px;text-align:center;">Chọn</th>
+              <th>ID</th>
+              <th>Thời gian</th>
+              <th>Client IP</th>
+              <th>Tên miền truy vấn (Query Domain)</th>
+              <th>Type</th>
+              <th>Response Size</th>
+              <th>Entropy</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in dns_logs %}
+            <tr>
+              <td style="text-align:center;">
+                <input type="checkbox" class="dns-chk" value="{{ log.id }}">
+              </td>
+              <td>#{{ log.id }}</td>
+              <td>{{ log.time }}</td>
+              <td><code>{{ log.client }}</code></td>
+              <td style="word-break:break-all;color:{% if log.entropy > 4.0 %}#ff8888{% else %}#c8cdd6{% endif %};">
+                {{ log.query }}
+              </td>
+              <td><span style="color:{% if log.qtype == 'TXT' %}#ffcc22{% else %}#00e5ff{% endif %};">{{ log.qtype }}</span></td>
+              <td>{{ log.size }} bytes</td>
+              <td><strong style="color:{% if log.entropy > 4.0 %}#ff4444{% else %}#88ff88{% endif %};">{{ log.entropy }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:1.2rem;">
+        <button class="btn-danger" onclick="submitDnsTunneling()" style="padding:.7rem 1.6rem;">
+          <i class="fa-solid fa-radar"></i> Phân tích & Gửi kết luận điều tra (+15 pts)
+        </button>
+        <span style="font-size:.8rem;color:var(--text-dim);" id="dns-selected-count">Đã chọn: 0 dòng</span>
+      </div>
+
+      <div id="dns-feedback" style="display:none;margin-top:1rem;padding:.9rem;border-radius:4px;font-size:.85rem;line-height:1.6;"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: SOCKS5 PIVOTING -->
+  <div id="tab-socks5" class="tab-pane">
+    <div class="tool-box" style="border-color:rgba(0,229,255,.3);">
+      <h2 style="font-size:1.15rem;color:var(--c);margin-bottom:.4rem;">
+        <i class="fa-solid fa-network-wired"></i> Sơ đồ mạng & Mô phỏng SOCKS5 Pivoting
+      </h2>
+      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:1rem;">
+        Mục tiêu: Đột nhập vào máy chủ <strong>Internal-AD (Domain Controller 10.0.3.5)</strong> nằm sâu trong mạng nội bộ. Tường lửa External đã chặn toàn bộ kết nối trực tiếp từ Internet vào mạng LAN. Bạn đã chiếm quyền máy chủ <strong>Web DMZ (10.0.1.50)</strong>.
+      </p>
+
+      <!-- SƠ ĐỒ MẠNG SVG -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 950 260" width="100%" height="240" style="max-width:900px;">
+          <!-- Nền lưới nhẹ -->
+          <defs>
+            <linearGradient id="gradAttacker" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff2244" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#ff2244" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="gradDMZ" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffcc00" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#ffcc00" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="gradAD" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.05"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Đường nối 1: Attacker -> External FW -> DMZ Web -->
+          <line x1="140" y1="120" x2="330" y2="120" stroke="#ff2244" stroke-width="2" stroke-dasharray="4"/>
+          <!-- Đường nối 2: DMZ Web -> Internal AD -->
+          <line x1="470" y1="120" x2="740" y2="70" stroke="#00ff88" stroke-width="3"/>
+          <!-- Đường nối 3: DMZ Web -> Internal DB -->
+          <line x1="470" y1="120" x2="740" y2="180" stroke="#00e5ff" stroke-width="2" stroke-dasharray="3"/>
+          <!-- Đường chặn: Attacker -> Internal AD (DROP) -->
+          <path d="M 140 120 Q 450 -20 740 70" fill="none" stroke="#ff4444" stroke-width="2" stroke-dasharray="6"/>
+          
+          <!-- Icon Cấm trên đường trực tiếp -->
+          <circle cx="450" cy="18" r="14" fill="#150005" stroke="#ff2244" stroke-width="2"/>
+          <text x="450" y="23" fill="#ff2244" font-family="'Share Tech Mono'" font-size="12" font-weight="bold" text-anchor="middle">DROP</text>
+
+          <!-- Tường lửa External -->
+          <rect x="235" y="85" width="22" height="70" fill="#200005" stroke="#ff2244" stroke-width="2" rx="3"/>
+          <text x="246" y="125" fill="#ff2244" font-family="'Share Tech Mono'" font-size="10" transform="rotate(-90 246 125)" text-anchor="middle">FIREWALL</text>
+
+          <!-- Node 1: Attacker -->
+          <rect x="30" y="80" width="130" height="80" rx="6" fill="url(#gradAttacker)" stroke="#ff2244" stroke-width="2"/>
+          <text x="95" y="105" fill="#fff" font-family="'Rajdhani'" font-weight="bold" font-size="14" text-anchor="middle">ATTACKER (Kali)</text>
+          <text x="95" y="125" fill="#ff8888" font-family="'Share Tech Mono'" font-size="11" text-anchor="middle">198.51.100.10</text>
+          <text x="95" y="145" fill="#ffcc22" font-family="'Share Tech Mono'" font-size="10" text-anchor="middle">[INTERNET]</text>
+
+          <!-- Node 2: Compromised Web (DMZ) -->
+          <rect x="330" y="80" width="150" height="80" rx="6" fill="url(#gradDMZ)" stroke="#ffcc00" stroke-width="2"/>
+          <text x="405" y="105" fill="#fff" font-family="'Rajdhani'" font-weight="bold" font-size="14" text-anchor="middle">COMPROMISED-WEB</text>
+          <text x="405" y="125" fill="#ffcc00" font-family="'Share Tech Mono'" font-size="11" text-anchor="middle">10.0.1.50 (DMZ)</text>
+          <text x="405" y="145" fill="#00ff88" font-family="'Share Tech Mono'" font-size="10" text-anchor="middle">[SOCKS5 SERVER: 1080]</text>
+
+          <!-- Node 3: Internal DB -->
+          <rect x="740" y="145" width="150" height="70" rx="6" fill="rgba(10,20,35,.8)" stroke="#00e5ff" stroke-width="1.5"/>
+          <text x="815" y="170" fill="#fff" font-family="'Rajdhani'" font-weight="bold" font-size="13" text-anchor="middle">INTERNAL-DB</text>
+          <text x="815" y="190" fill="#00e5ff" font-family="'Share Tech Mono'" font-size="11" text-anchor="middle">10.0.2.100 (MySQL: 3306)</text>
+
+          <!-- Node 4: Internal AD (Target) -->
+          <rect x="740" y="35" width="155" height="75" rx="6" fill="url(#gradAD)" stroke="#00ff88" stroke-width="2"/>
+          <text x="817" y="60" fill="#fff" font-family="'Rajdhani'" font-weight="bold" font-size="14" text-anchor="middle">INTERNAL-AD (DC)</text>
+          <text x="817" y="80" fill="#00ff88" font-family="'Share Tech Mono'" font-size="11" text-anchor="middle">10.0.3.5 (LDAP/Kerberos)</text>
+          <text x="817" y="98" fill="#ff2244" font-family="'Share Tech Mono'" font-size="10" text-anchor="middle">[CROWN JEWELS]</text>
+        </svg>
+      </div>
+
+      <!-- FORM CHỌN CHUỖI HOP & LỆNH PIVOT -->
+      <div class="quiz-sim-card">
+        <h3 style="font-size:1rem;color:#00e5ff;margin-bottom:.8rem;">
+          <i class="fa-solid fa-route"></i> Chọn chuỗi định tuyến (Hop) & Cấu hình Proxychains
+        </h3>
+
+        <form onsubmit="submitSocks5(event)">
+          <div style="margin-bottom:1rem;">
+            <label style="font-weight:700;color:#fff;margin-bottom:.4rem;display:block;">1. Đường đi mạng khả thi từ máy Attacker đến Internal-AD:</label>
+            <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.85rem;">
+              <label class="option-label">
+                <input type="radio" name="route_choice" value="direct_ad" required>
+                <span>Attacker &rarr; Kết nối thẳng qua Internet tới 10.0.3.5 (Bị Firewall External chặn DROP)</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="route_choice" value="dmz_pivot">
+                <span><strong>Attacker &rarr; Compromised-Web (Tunnel SOCKS5:1080) &rarr; Internal-AD (10.0.3.5)</strong> (Bắc cầu qua DMZ)</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="route_choice" value="db_pivot">
+                <span>Attacker &rarr; Internal-DB (10.0.2.100) &rarr; Internal-AD (Sai vì chưa có quyền kiểm soát máy DB)</span>
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1rem;">
+            <label style="font-weight:700;color:#fff;margin-bottom:.4rem;display:block;">2. Lệnh thực thi hợp lệ trên máy Kali để quét cổng Domain Controller qua SOCKS5:</label>
+            <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.85rem;">
+              <label class="option-label">
+                <input type="radio" name="cmd_choice" value="proxychains" required>
+                <span><code>proxychains nmap -sT -Pn -p 88,389,445 10.0.3.5</code> (Dùng TCP connect scan qua SOCKS5 proxy)</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="cmd_choice" value="syn_direct">
+                <span><code>nmap -sS 10.0.3.5</code> (SYN stealth scan trực tiếp, không qua proxy)</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="cmd_choice" value="ping">
+                <span><code>ping 10.0.3.5</code> (Ping ICMP trực tiếp ra Internet)</span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-success" style="padding:.65rem 1.6rem;">
+            <i class="fa-solid fa-check"></i> Xác nhận giải pháp Pivot (+15 pts)
+          </button>
+        </form>
+
+        <div id="socks5-feedback" style="display:none;margin-top:.9rem;padding:.9rem;border-radius:4px;font-size:.85rem;line-height:1.6;"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function switchTab(e, tabId) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // TAB 1: DHCP DORA PACKET VIEWER
+  async function sendDhcpStep(stepNum) {
+    document.querySelectorAll('.time-step').forEach(s => s.classList.remove('active-step'));
+    document.getElementById('step-box-' + stepNum).classList.add('active-step');
+
+    try {
+      const res = await fetch("{{ url_for('network_sim_dhcp_step') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token() }}" },
+        body: JSON.stringify({ step: stepNum })
+      });
+      const data = await res.json();
+      document.getElementById('dhcp-packet-view').innerText = data.packet;
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  async function submitDhcpQuiz(e) {
+    e.preventDefault();
+    const form = e.target;
+    const ans = form.querySelector('input[name="dhcp_answer"]:checked');
+    if (!ans) return;
+
+    try {
+      const res = await fetch("{{ url_for('check_dhcp_quiz') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token() }}" },
+        body: JSON.stringify({ answer_idx: ans.value })
+      });
+      const data = await res.json();
+      const fb = document.getElementById('dhcp-quiz-feedback');
+      fb.style.display = 'block';
+      if (data.correct) {
+        fb.style.background = 'rgba(0, 255, 136, 0.12)';
+        fb.style.border = '1px solid rgba(0, 255, 136, 0.4)';
+        fb.style.color = '#8fffc5';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Chính xác! (+15 pts)</strong><br>${data.explanation}`;
+        form.querySelector('button[type="submit"]').disabled = true;
+        if (data.new_score !== undefined) document.getElementById('current-score-val').innerText = data.new_score;
+      } else {
+        fb.style.background = 'rgba(255, 45, 85, 0.12)';
+        fb.style.border = '1px solid rgba(255, 45, 85, 0.4)';
+        fb.style.color = '#ff9aaa';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Chưa đúng!</strong> ${data.explanation}`;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  // TAB 2: DNS TUNNELING
+  document.querySelectorAll('.dns-chk').forEach(c => {
+    c.addEventListener('change', () => {
+      const cnt = document.querySelectorAll('.dns-chk:checked').length;
+      document.getElementById('dns-selected-count').innerText = `Đã chọn: ${cnt} dòng`;
+    });
+  });
+
+  async function submitDnsTunneling() {
+    const selected = Array.from(document.querySelectorAll('.dns-chk:checked')).map(c => parseInt(c.value));
+    if (selected.length === 0) {
+      alert('Vui lòng tích chọn ít nhất 1 dòng nghi ngờ trước khi phân tích!');
+      return;
+    }
+
+    try {
+      const res = await fetch("{{ url_for('check_dns_tunneling') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token() }}" },
+        body: JSON.stringify({ selected_ids: selected })
+      });
+      const data = await res.json();
+      const fb = document.getElementById('dns-feedback');
+      fb.style.display = 'block';
+      if (data.correct) {
+        fb.style.background = 'rgba(0, 255, 136, 0.12)';
+        fb.style.border = '1px solid rgba(0, 255, 136, 0.4)';
+        fb.style.color = '#8fffc5';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Phát hiện chính xác! (+15 pts)</strong><br>${data.explanation}`;
+        if (data.new_score !== undefined) document.getElementById('current-score-val').innerText = data.new_score;
+      } else {
+        fb.style.background = 'rgba(255, 45, 85, 0.12)';
+        fb.style.border = '1px solid rgba(255, 45, 85, 0.4)';
+        fb.style.color = '#ff9aaa';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Kết luận chưa chính xác!</strong><br>${data.explanation}`;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  // TAB 3: SOCKS5 PIVOT
+  async function submitSocks5(e) {
+    e.preventDefault();
+    const form = e.target;
+    const route = form.querySelector('input[name="route_choice"]:checked')?.value;
+    const cmd = form.querySelector('input[name="cmd_choice"]:checked')?.value;
+    if (!route || !cmd) return;
+
+    try {
+      const res = await fetch("{{ url_for('check_socks5_pivot') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token() }}" },
+        body: JSON.stringify({ route_choice: route, cmd_choice: cmd })
+      });
+      const data = await res.json();
+      const fb = document.getElementById('socks5-feedback');
+      fb.style.display = 'block';
+      if (data.correct) {
+        fb.style.background = 'rgba(0, 255, 136, 0.12)';
+        fb.style.border = '1px solid rgba(0, 255, 136, 0.4)';
+        fb.style.color = '#8fffc5';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Kế hoạch Pivot hoàn toàn chính xác! (+15 pts)</strong><br>${data.explanation}`;
+        form.querySelector('button[type="submit"]').disabled = true;
+        if (data.new_score !== undefined) document.getElementById('current-score-val').innerText = data.new_score;
+      } else {
+        fb.style.background = 'rgba(255, 45, 85, 0.12)';
+        fb.style.border = '1px solid rgba(255, 45, 85, 0.4)';
+        fb.style.color = '#ff9aaa';
+        fb.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Cấu hình chưa hợp lệ!</strong><br>${data.explanation}`;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }
+</script>
+
+{% endblock %}

@@ -45,6 +45,7 @@
         {% if current_user.role in ['admin','user'] %}
           <li><a href="{{ url_for('dashboard') }}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a></li>
           <li><a href="{{ url_for('knowledge_base') }}"><i class="fa-solid fa-brain"></i> Kiến Thức</a></li>
+          <li><a href="{{ url_for('network_sim') }}"><i class="fa-solid fa-network-wired"></i> Mạng &amp; Pivot</a></li>
           <li><a href="{{ url_for('hmac_tool') }}">HMAC</a></li>
           <li><a href="{{ url_for('rsa_tool') }}">RSA</a></li>
         {% endif %}

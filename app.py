@@ -5,6 +5,7 @@ import os
 import time
 import threading
 import socket
+import secrets
 import platform
 import psutil
 import requests
@@ -28,7 +29,7 @@ load_dotenv()
 # Đường dẫn gốc của project (dùng cho path tuyệt đối)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort, session
+from flask import Flask, make_response, render_template, redirect, url_for, request, flash, jsonify, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -1836,6 +1837,79 @@ def submit_ioc_detection():
         'prevention_guidance': incident['prevention_guidance']
     })
 
+
+
+
+# ==========================================
+# MODULE: XSS & SESSION HIJACKING LAB
+# ==========================================
+@app.route('/xss_session_lab', methods=['GET', 'POST'])
+@login_required
+def xss_session_lab():
+    seed_xss_demo()
+
+    # (a) Reflected XSS input (qua GET)
+    reflected_input = request.args.get('reflected_input', '')
+    if reflected_input and '<script' in reflected_input.lower():
+        log_action('XSS Payload Submitted (Sandboxed Lab)')
+
+    # (b) Stored XSS input (qua POST)
+    if request.method == 'POST':
+        content = request.form.get('content', '').strip()
+        if content:
+            if '<script' in content.lower():
+                log_action('XSS Payload Submitted (Sandboxed Lab)')
+            
+            # LƯU RAW, KHÔNG escape — đây là nơi minh hoạ Stored XSS
+            new_post = XSSDemoPost(
+                author=current_user.username,
+                content=content[:1000]
+            )
+            db.session.add(new_post)
+            db.session.commit()
+            flash('Đã đăng bình luận demo thành công!', 'success')
+            return redirect(url_for('xss_session_lab'))
+
+    # Danh sách 10 post gần nhất
+    stored_posts = XSSDemoPost.query.order_by(XSSDemoPost.timestamp.desc()).limit(10).all()
+
+    # Danh sách 10 token đã bắt được
+    captured_tokens = XSSCapturedToken.query.order_by(XSSCapturedToken.timestamp.desc()).limit(10).all()
+
+    # Cookie giả lập riêng cho lab, KHÔNG phải session cookie thật của Flask-Login
+    existing_token = request.cookies.get('xss_demo_token')
+    need_set_cookie = False
+    if not existing_token:
+        need_set_cookie = True
+        existing_token = f"DEMO_TOKEN_{secrets.token_hex(8)}"
+
+    resp = make_response(render_template(
+        'xss_session_lab.html',
+        reflected_input=reflected_input,
+        stored_posts=stored_posts,
+        captured_tokens=captured_tokens,
+        demo_token=existing_token
+    ))
+
+    if need_set_cookie:
+        # Cố ý KHÔNG đặt HttpOnly để JS đọc được — minh hoạ lỗ hổng Session Hijacking
+        resp.set_cookie('xss_demo_token', existing_token, httponly=False, samesite='Lax')
+
+    return resp
+
+
+@app.route('/xss_session_lab/reset_posts', methods=['POST'])
+@login_required
+def reset_xss_posts():
+    try:
+        XSSDemoPost.query.delete()
+        db.session.commit()
+        seed_xss_demo()
+        flash('Đã đặt lại danh sách bình luận demo về trạng thái ban đầu!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Lỗi đặt lại bình luận: {e}', 'error')
+    return redirect(url_for('xss_session_lab'))
 
 
 def seed_xss_demo():

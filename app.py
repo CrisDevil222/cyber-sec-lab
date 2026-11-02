@@ -1911,6 +1911,44 @@ def reset_xss_posts():
         flash(f'Lỗi đặt lại bình luận: {e}', 'error')
     return redirect(url_for('xss_session_lab'))
 
+# 1x1 Transparent GIF bytes phản hồi yêu cầu new Image().src hoặc fetch()
+XSS_TRANSPARENT_GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
+
+@app.route('/xss_session_lab/collector', methods=['GET'])
+def xss_session_collector():
+    # KHÔNG cần @login_required (đóng vai server của attacker nhận request từ nạn nhân)
+    token = request.args.get('token', '').strip()
+    source_ip = request.remote_addr or '127.0.0.1'
+    now_str = datetime.utcnow().strftime('%H:%M:%S')
+
+    if token:
+        try:
+            captured = XSSCapturedToken(
+                source_ip=source_ip,
+                token_value=token[:500],
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(captured)
+            db.session.commit()
+
+            # Emit real-time qua SocketIO namespace '/soc' tới bảng Attacker View
+            socketio.emit('xss_token_captured', {
+                'source_ip': source_ip,
+                'token': token[:500],
+                'timestamp': now_str
+            }, namespace='/soc')
+
+            log_action('Session Token Captured via XSS Demo')
+        except Exception as e:
+            print("Lỗi lưu XSSCapturedToken:", e)
+
+    resp = make_response(XSS_TRANSPARENT_GIF)
+    resp.headers['Content-Type'] = 'image/gif'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
 
 def seed_xss_demo():
     if XSSDemoPost.query.count() == 0:

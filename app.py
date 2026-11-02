@@ -212,6 +212,19 @@ class IocProgress(db.Model):
     is_correct = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+class XSSDemoPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    author = db.Column(db.String(150))
+    content = db.Column(db.String(1000))  # LƯU RAW, KHÔNG escape — đây là nơi minh hoạ Stored XSS
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class XSSCapturedToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    source_ip = db.Column(db.String(50))
+    token_value = db.Column(db.String(500))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -1822,6 +1835,22 @@ def submit_ioc_detection():
         'detection_guidance': incident['detection_guidance'],
         'prevention_guidance': incident['prevention_guidance']
     })
+
+
+
+def seed_xss_demo():
+    if XSSDemoPost.query.count() == 0:
+        p1 = XSSDemoPost(
+            author="System_Security",
+            content="Chào mừng các chuyên viên an ninh mạng đến với diễn đàn trao đổi kỹ thuật nội bộ!"
+        )
+        p2 = XSSDemoPost(
+            author="Alice_Dev",
+            content="Lưu ý: Bảng tin đang kích hoạt chế độ bình luận hỗ trợ định dạng tự do (Unescaped / Raw HTML) để phục vụ kiểm thử."
+        )
+        db.session.add_all([p1, p2])
+        db.session.commit()
+        print(">>> Seeded initial XSSDemoPost successfully.")
 
 
 if __name__ == '__main__':
